@@ -1,32 +1,76 @@
+// --- FIREBASE CONFIGURATION ---
+// Values will be replaced by GitHub Secrets during deployment or can be filled manually
+const firebaseConfig = {
+    apiKey: "FIREBASE_API_KEY",
+    authDomain: "FIREBASE_AUTH_DOMAIN",
+    projectId: "FIREBASE_PROJECT_ID",
+    storageBucket: "FIREBASE_STORAGE_BUCKET",
+    messagingSenderId: "FIREBASE_MESSAGING_SENDER_ID",
+    appId: "FIREBASE_APP_ID",
+    measurementId: "FIREBASE_MEASUREMENT_ID"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
 // --- 1. USTAWIENIE DATY ---
 const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
 document.getElementById('current-date').innerText = new Date().toLocaleDateString('pl-PL', options);
 
-// --- 2. DANE DOMYŚLNE I POBIERANIE Z LOCAL STORAGE ---
-const defaultMenu =[
-    { id: 1, name: "Schabowy z ziemniakami i mizerią", price: 26.00 },
-    { id: 2, name: "Pizza Margherita (32cm)", price: 29.00 },
-    { id: 3, name: "Pad Thai z Kurczakiem", price: 34.00 },
-    { id: 4, name: "Zupa Pomidorowa", price: 12.00 },
-    { id: 5, name: "Burger Drwala z frytkami", price: 38.00 }
-];
+// --- 2. STAN APLIKACJI (REALTIME) ---
+let dailyMenu = [];
+let restaurantName = "Ładowanie...";
+let orderLimit = "";
+let orders = [];
+let history = [];
+let profiles = {};
 
-let dailyMenu = JSON.parse(localStorage.getItem('ptakMenu')) || defaultMenu;
-let restaurantName = localStorage.getItem('ptakRestaurant') || "Bistro pod Pijanym Ptakiem";
-let orderLimit = localStorage.getItem('ptakOrderLimit') || ""; 
-let orders = JSON.parse(localStorage.getItem('ptakOrders')) ||[];
-let history = JSON.parse(localStorage.getItem('ptakHistory')) || [];
-let profiles = JSON.parse(localStorage.getItem('ptakProfiles')) || {};
-
-// --- 3. INICJALIZACJA APLIKACJI ---
+// --- 3. INICJALIZACJA APLIKACJI (LISTENERY REALTIME) ---
 function initApp() {
-    renderRestaurantName();
-    renderMenu();
-    renderAdminMenu();
-    renderOrders();
-    renderHistory();
-    renderProfileList();
-    renderOrderLimitInfo();
+    // 1. Słuchaj ustawień (Restauracja, Menu, Limit)
+    db.collection("config").doc("current").onSnapshot((doc) => {
+        if (doc.exists) {
+            const data = doc.data();
+            restaurantName = data.restaurantName || "Bistro pod Pijanym Ptakiem";
+            dailyMenu = data.menu || [];
+            orderLimit = data.orderLimit || "";
+            
+            renderRestaurantName();
+            renderMenu();
+            renderOrderLimitInfo();
+            // Przeładuj zamówienia bo ceny w menu mogły się zmienić
+            renderOrders();
+        } else {
+            // Inicjalizacja pustej konfiguracji jeśli nie istnieje
+            db.collection("config").doc("current").set({
+                restaurantName: "Bistro pod Pijanym Ptakiem",
+                menu: [],
+                orderLimit: ""
+            });
+        }
+    });
+
+    // 2. Słuchaj zamówień
+    db.collection("orders").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
+        orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderOrders();
+    });
+
+    // 3. Słuchaj historii (ostatnie 10 dni)
+    db.collection("history").orderBy("timestamp", "desc").limit(10).onSnapshot((snapshot) => {
+        history = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderHistory();
+    });
+
+    // 4. Słuchaj szablonów
+    db.collection("profiles").onSnapshot((snapshot) => {
+        profiles = {};
+        snapshot.docs.forEach(doc => {
+            profiles[doc.id] = doc.data();
+        });
+        renderProfileList();
+    });
 }
 
 // --- TABS LOGIC ---
@@ -39,11 +83,9 @@ function switchTab(tabId) {
         }
     }
 
-    // Deactivate all
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-    // Activate selected
     const activeBtn = document.querySelector(`.tab-btn[onclick*="${tabId}"]`);
     if (activeBtn) activeBtn.classList.add('active');
     
@@ -52,6 +94,7 @@ function switchTab(tabId) {
 
     if (tabId === 'admin-tab') {
         document.getElementById('admin-restaurant-name').value = restaurantName;
+        document.getElementById('admin-order-limit').value = orderLimit;
         renderProfileList();
     }
 }
@@ -59,17 +102,9 @@ function switchTab(tabId) {
 // --- 4. FUNKCJE ADMINISTRATORA ---
 function updateOrderLimit() {
     const limitInput = document.getElementById('admin-order-limit').value;
-    if (limitInput !== "") {
-        orderLimit = limitInput;
-        localStorage.setItem('ptakOrderLimit', orderLimit);
-        renderOrderLimitInfo();
-        alert(`Ustawiono limit zamówień na godzinę: ${orderLimit}`);
-    } else {
-        orderLimit = "";
-        localStorage.removeItem('ptakOrderLimit');
-        renderOrderLimitInfo();
-        alert("Usunięto limit czasowy.");
-    }
+    db.collection("config").doc("current").update({ orderLimit: limitInput })
+        .then(() => alert("Zaktualizowano limit czasu!"))
+        .catch(err => console.error("Error updating limit:", err));
 }
 
 function renderOrderLimitInfo() {
@@ -86,10 +121,9 @@ function renderOrderLimitInfo() {
 function updateRestaurantName() {
     const newName = document.getElementById('admin-restaurant-name').value.trim();
     if (newName !== "") {
-        restaurantName = newName;
-        localStorage.setItem('ptakRestaurant', restaurantName);
-        renderRestaurantName();
-        alert("Zaktualizowano nazwę restauracji!");
+        db.collection("config").doc("current").update({ restaurantName: newName })
+            .then(() => alert("Zaktualizowano nazwę restauracji!"))
+            .catch(err => console.error("Error updating name:", err));
     }
 }
 
@@ -105,13 +139,10 @@ function saveAsProfile() {
 
     const profileName = prompt("Podaj nazwę dla tego szablonu (np. Nazwa Restauracji):", restaurantName);
     if (profileName) {
-        profiles[profileName] = {
+        db.collection("profiles").doc(profileName).set({
             name: restaurantName,
-            menu: [...dailyMenu]
-        };
-        localStorage.setItem('ptakProfiles', JSON.stringify(profiles));
-        renderProfileList();
-        alert(`Zapisano szablon: ${profileName}`);
+            menu: dailyMenu
+        }).then(() => alert(`Zapisano szablon: ${profileName}`));
     }
 }
 
@@ -124,13 +155,10 @@ function loadProfile() {
 
     if (confirm(`Czy chcesz wczytać szablon "${profileName}"? Obecne menu zostanie zastąpione.`)) {
         const profile = profiles[profileName];
-        restaurantName = profile.name;
-        dailyMenu = [...profile.menu];
-        
-        localStorage.setItem('ptakRestaurant', restaurantName);
-        saveMenu(); 
-        renderRestaurantName();
-        alert(`Wczytano: ${profileName}`);
+        db.collection("config").doc("current").update({
+            restaurantName: profile.name,
+            menu: profile.menu
+        }).then(() => alert(`Wczytano: ${profileName}`));
     }
 }
 
@@ -139,9 +167,8 @@ function deleteProfile() {
     if (!profileName) return;
 
     if (confirm(`Czy na pewno usunąć szablon "${profileName}"?`)) {
-        delete profiles[profileName];
-        localStorage.setItem('ptakProfiles', JSON.stringify(profiles));
-        renderProfileList();
+        db.collection("profiles").doc(profileName).delete()
+            .then(() => alert("Usunięto szablon."));
     }
 }
 
@@ -173,24 +200,19 @@ function addMenuItem() {
         price: priceInput
     };
 
-    dailyMenu.push(newItem);
-    saveMenu();
-    
-    document.getElementById('admin-item-name').value = "";
-    document.getElementById('admin-item-price').value = "";
+    const updatedMenu = [...dailyMenu, newItem];
+    db.collection("config").doc("current").update({ menu: updatedMenu })
+        .then(() => {
+            document.getElementById('admin-item-name').value = "";
+            document.getElementById('admin-item-price').value = "";
+        });
 }
 
 function deleteMenuItem(id) {
     if(confirm("Usunąć tę pozycję z menu?")) {
-        dailyMenu = dailyMenu.filter(item => item.id !== id);
-        saveMenu();
+        const updatedMenu = dailyMenu.filter(item => item.id !== id);
+        db.collection("config").doc("current").update({ menu: updatedMenu });
     }
-}
-
-function saveMenu() {
-    localStorage.setItem('ptakMenu', JSON.stringify(dailyMenu));
-    renderMenu();
-    renderAdminMenu();
 }
 
 function renderAdminMenu() {
@@ -244,7 +266,6 @@ function addOrder() {
         return;
     }
 
-    // Sprawdzenie limitu czasu
     if (orderLimit) {
         const now = new Date();
         const [limitHours, limitMinutes] = orderLimit.split(':').map(Number);
@@ -259,71 +280,65 @@ function addOrder() {
 
     const selectedItem = dailyMenu.find(m => m.id === itemId);
     
-    const newOrder = {
-        id: Date.now(),
+    db.collection("orders").add({
         user: userNameInput,
         item: selectedItem,
         note: noteInput,
-        paid: false
-    };
-
-    orders.push(newOrder);
-    saveOrders();
-    
-    document.getElementById('item-select').value = "";
-    document.getElementById('order-note').value = "";
+        paid: false,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(() => {
+        document.getElementById('item-select').value = "";
+        document.getElementById('order-note').value = "";
+    });
 }
 
 function togglePaid(orderId) {
     const order = orders.find(o => o.id === orderId);
     if (order) {
-        order.paid = !order.paid;
-        saveOrders();
+        db.collection("orders").doc(orderId).update({ paid: !order.paid });
     }
 }
 
 function deleteOrder(orderId) {
-    orders = orders.filter(o => o.id !== orderId);
-    saveOrders();
-}
-
-function clearAllOrders() {
-    if(confirm("Czy na pewno chcesz wyczyścić dzisiejszą listę BEZ zapisywania do historii?")) {
-        orders =[];
-        saveOrders();
+    if(confirm("Usunąć to zamówienie?")) {
+        db.collection("orders").doc(orderId).delete();
     }
 }
 
-function archiveDay() {
+async function clearAllOrders() {
+    if(confirm("Czy na pewno chcesz wyczyścić dzisiejszą listę BEZ zapisywania do historii?")) {
+        const snapshot = await db.collection("orders").get();
+        const batch = db.batch();
+        snapshot.docs.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+    }
+}
+
+async function archiveDay() {
     if (orders.length === 0) {
         alert("Nie ma żadnych zamówień do zapisania!");
         return;
     }
 
     if (confirm("Czy chcesz zakończyć dzień i zapisać zamówienia do historii?")) {
-        const historyEntry = {
-            id: Date.now(),
+        const total = document.getElementById('total-price-value').innerText;
+        
+        await db.collection("history").add({
             date: new Date().toLocaleDateString('pl-PL', options),
             restaurant: restaurantName,
-            orders: [...orders],
-            total: document.getElementById('total-price-value').innerText
-        };
+            orders: orders,
+            total: total,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
 
-        history.unshift(historyEntry); 
-        if (history.length > 10) history.pop(); 
+        // Wyczyść zamówienia
+        const snapshot = await db.collection("orders").get();
+        const batch = db.batch();
+        snapshot.docs.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
 
-        localStorage.setItem('ptakHistory', JSON.stringify(history));
-        
-        orders = [];
-        saveOrders();
-        renderHistory();
         alert("Dzień zapisany w historii! 🎉");
     }
-}
-
-function saveOrders() {
-    localStorage.setItem('ptakOrders', JSON.stringify(orders));
-    renderOrders();
 }
 
 function renderOrders() {
@@ -367,9 +382,9 @@ function renderOrders() {
             </td>
             <td>${priceWithDelivery.toFixed(2)} zł</td>
             <td>
-                <input type="checkbox" ${order.paid ? 'checked' : ''} onchange="togglePaid(${order.id})">
+                <input type="checkbox" ${order.paid ? 'checked' : ''} onchange="togglePaid('${order.id}')">
             </td>
-            <td><button class="btn-danger btn-small" onclick="deleteOrder(${order.id})">❌</button></td>
+            <td><button class="btn-danger btn-small" onclick="deleteOrder('${order.id}')">❌</button></td>
         `;
         
         tbody.appendChild(tr);
@@ -419,9 +434,7 @@ function reorder(user, itemId, note) {
     document.getElementById('user-name').value = user;
     document.getElementById('item-select').value = itemId;
     document.getElementById('order-note').value = note;
-    
     switchTab('orders-tab');
-    
     alert(`Uzupełniono formularz dla: ${user}. Kliknij 'Zamawiam!', aby potwierdzić.`);
 }
 
