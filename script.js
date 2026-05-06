@@ -1,13 +1,13 @@
 // --- FIREBASE CONFIGURATION ---
 // Values will be replaced by GitHub Secrets during deployment or can be filled manually
 const firebaseConfig = {
-    apiKey: "FIREBASE_API_KEY",
-    authDomain: "FIREBASE_AUTH_DOMAIN",
-    projectId: "FIREBASE_PROJECT_ID",
-    storageBucket: "FIREBASE_STORAGE_BUCKET",
-    messagingSenderId: "FIREBASE_MESSAGING_SENDER_ID",
-    appId: "FIREBASE_APP_ID",
-    measurementId: "FIREBASE_MEASUREMENT_ID"
+    apiKey: "AIzaSyCqqX-MlKAVot1maPYOztvG13ZUxfsRjgc",
+    authDomain: "ptak-o-food.firebaseapp.com",
+    projectId: "ptak-o-food",
+    storageBucket: "ptak-o-food.firebasestorage.app",
+    messagingSenderId: "668261675451",
+    appId: "1:668261675451:web:c6c459211b3339cc06d49e",
+    measurementId: "G-YJHBE6F3TX"
 };
 
 // Initialize Firebase
