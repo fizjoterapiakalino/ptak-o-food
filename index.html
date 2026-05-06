@@ -21,40 +21,48 @@
 
         <!-- TAB: ORDERS -->
         <div id="orders-tab" class="tab-content active">
-            <!-- SEKCJA INFO O DZISIEJSZYM JEDZENIU -->
-            <div class="section">
-                <h2>📍 Co i skąd dzisiaj jemy?</h2>
-                <div class="info-header">
-                    <strong>Data:</strong> <span id="current-date"></span><br>
-                    <strong>Restauracja:</strong> <strong style="color: var(--secondary); font-size: 1.2em;" id="restaurant-name"></strong>
-                    <span id="order-limit-display"></span>
+            <div class="orders-container">
+                <!-- LEWA KOLUMNA: MENU -->
+                <div class="left-side">
+                    <div class="section">
+                        <h2>📍 Co i skąd dzisiaj jemy?</h2>
+                        <div class="info-header">
+                            <strong>Data:</strong> <span id="current-date"></span><br>
+                            <strong>Restauracja:</strong> <strong style="color: var(--secondary); font-size: 1.2em;" id="restaurant-name"></strong>
+                            <span id="order-limit-display"></span>
+                        </div>
+                        
+                        <h3>📜 Menu na dziś (kliknij, aby wybrać):</h3>
+                        <ul class="menu-list" id="menu-list">
+                            <!-- Menu generowane przez JS -->
+                        </ul>
+                    </div>
                 </div>
-                
-                <h3>📜 Menu na dziś:</h3>
-                <ul class="menu-list" id="menu-list">
-                    <!-- Menu generowane przez JS -->
-                </ul>
-            </div>
 
-            <!-- SEKCJA FORMULARZA ZAMÓWIENIA -->
-            <div class="section">
-                <h2>✍️ Złóż zamówienie</h2>
-                <div class="form-group">
-                    <input type="text" id="user-name" placeholder="Wpisz swoje imię..." list="common-names">
-                    <datalist id="common-names">
-                        <option value="Michał"></option>
-                        <option value="Kasia"></option>
-                        <option value="Piotrek"></option>
-                        <option value="Ania"></option>
-                    </datalist>
+                <!-- PRAWA KOLUMNA: FORMULARZ -->
+                <div class="right-side sticky-order-form">
+                    <div class="section">
+                        <h2>✍️ Złóż zamówienie</h2>
+                        <div class="form-group" style="flex-direction: column; align-items: stretch;">
+                            <label><strong>Kto zamawia?:</strong></label>
+                            <input type="text" id="user-name" placeholder="Twoje imię..." list="common-names">
+                            <datalist id="common-names">
+                                <option value="Michał"></option>
+                                <option value="Kasia"></option>
+                                <option value="Piotrek"></option>
+                                <option value="Ania"></option>
+                            </datalist>
 
-                    <select id="item-select">
-                        <option value="">-- Wybierz z menu --</option>
-                    </select>
+                            <label style="margin-top: 10px;"><strong>Wybrane danie:</strong></label>
+                            <span id="selected-item-display" class="selection-info">Najpierw kliknij danie z menu</span>
+                            <input type="hidden" id="item-select-id" value="">
 
-                    <input type="text" id="order-note" placeholder="Uwagi (np. bez cebuli, sos ostry)...">
+                            <label style="margin-top: 10px;"><strong>Uwagi:</strong></label>
+                            <input type="text" id="order-note" placeholder="np. bez cebuli, sos ostry...">
 
-                    <button onclick="addOrder()">Zamawiam!</button>
+                            <button onclick="addOrder()" style="margin-top: 15px; width: 100%;">🚀 Zamawiam!</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
