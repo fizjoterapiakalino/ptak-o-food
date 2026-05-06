@@ -76,10 +76,16 @@ function initApp() {
 // --- TABS LOGIC ---
 function switchTab(tabId) {
     if (tabId === 'admin-tab') {
-        const pass = prompt("Podaj hasło administratora:");
-        if (pass !== "ptak123") {
-            if (pass !== null) alert("❌ Błędne hasło!");
-            return;
+        const isAdmin = localStorage.getItem('ptakIsAdmin') === 'true';
+        
+        if (!isAdmin) {
+            const pass = prompt("Podaj hasło administratora:");
+            if (pass === "ptak123") {
+                localStorage.setItem('ptakIsAdmin', 'true');
+            } else {
+                if (pass !== null) alert("❌ Błędne hasło!");
+                return;
+            }
         }
     }
 
@@ -97,6 +103,12 @@ function switchTab(tabId) {
         document.getElementById('admin-order-limit').value = orderLimit;
         renderProfileList();
     }
+}
+
+function logoutAdmin() {
+    localStorage.removeItem('ptakIsAdmin');
+    alert("Wylogowano z panelu administratora.");
+    switchTab('orders-tab');
 }
 
 // --- 4. FUNKCJE ADMINISTRATORA ---
