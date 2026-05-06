@@ -246,35 +246,44 @@ function renderAdminMenu() {
 // --- 5. FUNKCJE DLA ZWYKŁEGO UŻYTKOWNIKA ---
 function renderMenu() {
     const menuList = document.getElementById('menu-list');
-    const itemSelect = document.getElementById('item-select');
     
     if (menuList) menuList.innerHTML = "";
-    if (itemSelect) itemSelect.innerHTML = '<option value="">-- Wybierz z menu --</option>';
 
     dailyMenu.forEach(item => {
         if (menuList) {
             let li = document.createElement('li');
-            li.className = 'menu-item';
+            li.className = 'menu-item clickable';
+            li.setAttribute('data-id', item.id);
+            li.onclick = () => selectMenuItem(item.id, item.name, item.price);
             li.innerHTML = `${item.name} <span class="menu-price">${item.price.toFixed(2)} zł</span>`;
             menuList.appendChild(li);
-        }
-
-        if (itemSelect) {
-            let option = document.createElement('option');
-            option.value = item.id;
-            option.innerText = `${item.name} (${item.price.toFixed(2)} zł)`;
-            itemSelect.appendChild(option);
         }
     });
 }
 
+function selectMenuItem(id, name, price) {
+    // UI Update
+    document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('selected'));
+    const selectedEl = document.querySelector(`.menu-item[data-id="${id}"]`);
+    if (selectedEl) selectedEl.classList.add('selected');
+
+    // Form Update
+    const display = document.getElementById('selected-item-display');
+    const inputId = document.getElementById('item-select-id');
+    
+    if (display && inputId) {
+        display.innerText = `${name} (${price.toFixed(2)} zł)`;
+        inputId.value = id;
+    }
+}
+
 function addOrder() {
     const userNameInput = document.getElementById('user-name').value.trim();
-    const itemId = parseInt(document.getElementById('item-select').value);
+    const itemId = parseInt(document.getElementById('item-select-id').value);
     const noteInput = document.getElementById('order-note').value.trim();
 
     if (userNameInput === "" || isNaN(itemId)) {
-        alert("❗ Proszę wpisać swoje imię i wybrać danie z listy.");
+        alert("❗ Proszę wpisać swoje imię i wybrać danie z menu (klikając w nie).");
         return;
     }
 
@@ -299,8 +308,12 @@ function addOrder() {
         paid: false,
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
     }).then(() => {
-        document.getElementById('item-select').value = "";
+        // Reset form but keep name
+        document.getElementById('item-select-id').value = "";
+        document.getElementById('selected-item-display').innerText = "Najpierw kliknij danie z menu";
         document.getElementById('order-note').value = "";
+        document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('selected'));
+        alert("Zamówienie dodane! Przejdź do 'Listy zamówień' aby je zobaczyć.");
     });
 }
 

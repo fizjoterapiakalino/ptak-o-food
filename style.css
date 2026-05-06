@@ -214,6 +214,51 @@ th {
     border-bottom: 1px dashed #eee;
 }
 
+/* ORDERS TAB LAYOUT */
+.orders-container {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+@media (min-width: 1024px) {
+    .orders-container {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        align-items: flex-start;
+    }
+}
+
+.menu-item.clickable {
+    cursor: pointer;
+    transition: 0.2s;
+    border: 2px solid transparent;
+}
+
+.menu-item.clickable:hover {
+    transform: translateY(-3px);
+    border-color: var(--primary);
+    box-shadow: 0 5px 15px rgba(9, 132, 227, 0.1);
+}
+
+.menu-item.selected {
+    border-color: var(--primary);
+    background-color: #e1f5fe;
+}
+
+.sticky-order-form {
+    position: sticky;
+    top: 20px;
+}
+
+.selection-info {
+    font-size: 0.9em;
+    color: var(--primary);
+    font-weight: bold;
+    margin-bottom: 10px;
+    display: block;
+}
+
 /* TABS STYLES */
 .tabs {
     display: flex;
