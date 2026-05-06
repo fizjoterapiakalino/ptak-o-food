@@ -38,6 +38,7 @@ function initApp() {
             
             renderRestaurantName();
             renderMenu();
+            renderAdminMenu();
             renderOrderLimitInfo();
             // Przeładuj zamówienia bo ceny w menu mogły się zmienić
             renderOrders();
