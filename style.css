@@ -31,16 +31,6 @@ body {
     .container {
         max-width: 1300px;
     }
-    .content-wrapper {
-        display: grid;
-        grid-template-columns: 1fr 450px;
-        gap: 25px;
-        align-items: flex-start;
-    }
-    .right-side {
-        position: sticky;
-        top: 20px;
-    }
 }
 
 h1 {

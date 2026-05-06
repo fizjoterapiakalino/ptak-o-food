@@ -14,88 +14,85 @@
         <!-- TABS NAVIGATION -->
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('orders-tab')">🛒 Zamówienia</button>
+            <button class="tab-btn" onclick="switchTab('summary-tab')">📊 Lista zamówień</button>
             <button class="tab-btn" onclick="switchTab('history-tab')">📜 Historia</button>
             <button class="tab-btn" onclick="switchTab('admin-tab')">⚙️ Panel Admina</button>
         </div>
 
         <!-- TAB: ORDERS -->
         <div id="orders-tab" class="tab-content active">
-            <div class="content-wrapper">
-                <div class="left-side">
-                    <!-- SEKCJA INFO O DZISIEJSZYM JEDZENIU -->
-                    <div class="section">
-                        <h2>📍 Co i skąd dzisiaj jemy?</h2>
-                        <div class="info-header">
-                            <strong>Data:</strong> <span id="current-date"></span><br>
-                            <strong>Restauracja:</strong> <strong style="color: var(--secondary); font-size: 1.2em;" id="restaurant-name"></strong>
-                            <span id="order-limit-display"></span>
-                        </div>
-                        
-                        <h3>📜 Menu na dziś:</h3>
-                        <ul class="menu-list" id="menu-list">
-                            <!-- Menu generowane przez JS -->
-                        </ul>
-                    </div>
+            <!-- SEKCJA INFO O DZISIEJSZYM JEDZENIU -->
+            <div class="section">
+                <h2>📍 Co i skąd dzisiaj jemy?</h2>
+                <div class="info-header">
+                    <strong>Data:</strong> <span id="current-date"></span><br>
+                    <strong>Restauracja:</strong> <strong style="color: var(--secondary); font-size: 1.2em;" id="restaurant-name"></strong>
+                    <span id="order-limit-display"></span>
+                </div>
+                
+                <h3>📜 Menu na dziś:</h3>
+                <ul class="menu-list" id="menu-list">
+                    <!-- Menu generowane przez JS -->
+                </ul>
+            </div>
 
-                    <!-- SEKCJA FORMULARZA ZAMÓWIENIA -->
-                    <div class="section">
-                        <h2>✍️ Złóż zamówienie</h2>
-                        <div class="form-group">
-                            <input type="text" id="user-name" placeholder="Wpisz swoje imię..." list="common-names">
-                            <datalist id="common-names">
-                                <option value="Michał"></option>
-                                <option value="Kasia"></option>
-                                <option value="Piotrek"></option>
-                                <option value="Ania"></option>
-                            </datalist>
+            <!-- SEKCJA FORMULARZA ZAMÓWIENIA -->
+            <div class="section">
+                <h2>✍️ Złóż zamówienie</h2>
+                <div class="form-group">
+                    <input type="text" id="user-name" placeholder="Wpisz swoje imię..." list="common-names">
+                    <datalist id="common-names">
+                        <option value="Michał"></option>
+                        <option value="Kasia"></option>
+                        <option value="Piotrek"></option>
+                        <option value="Ania"></option>
+                    </datalist>
 
-                            <select id="item-select">
-                                <option value="">-- Wybierz z menu --</option>
-                            </select>
+                    <select id="item-select">
+                        <option value="">-- Wybierz z menu --</option>
+                    </select>
 
-                            <input type="text" id="order-note" placeholder="Uwagi (np. bez cebuli, sos ostry)...">
+                    <input type="text" id="order-note" placeholder="Uwagi (np. bez cebuli, sos ostry)...">
 
-                            <button onclick="addOrder()">Zamawiam!</button>
-                        </div>
-                    </div>
+                    <button onclick="addOrder()">Zamawiam!</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: SUMMARY (LISTA ZAMÓWIEŃ) -->
+        <div id="summary-tab" class="tab-content">
+            <div class="section">
+                <h2>🛒 Aktualna lista zamówień</h2>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                    <button class="btn-success" onclick="archiveDay()" style="flex: 1; min-width: 200px;">✅ Zakończ i Zapisz Dzień</button>
+                    <button class="btn-warning" onclick="clearAllOrders()" style="flex: 1; min-width: 200px;">🗑️ Wyczyść (Reset)</button>
                 </div>
 
-                <div class="right-side">
-                    <!-- SEKCJA PODSUMOWANIA -->
-                    <div class="section">
-                        <h2>🛒 Lista zamówień</h2>
-                        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                            <button class="btn-success" onclick="archiveDay()" style="flex: 1;">✅ Zakończ i Zapisz Dzień</button>
-                            <button class="btn-warning" onclick="clearAllOrders()" style="flex: 1;">🗑️ Wyczyść (Reset)</button>
-                        </div>
+                <div class="form-group" style="margin-bottom: 20px; border-bottom: 1px solid #dfe6e9; padding-bottom: 15px;">
+                    <label style="font-size: 0.9em;"><strong>Koszt dostawy (łącznie):</strong></label>
+                    <input type="number" id="delivery-fee" placeholder="0.00" step="0.01" style="max-width: 100px;" oninput="renderOrders()">
+                </div>
 
-                        <div class="form-group" style="margin-bottom: 20px; border-bottom: 1px solid #dfe6e9; padding-bottom: 15px;">
-                            <label style="font-size: 0.9em;"><strong>Koszt dostawy (łącznie):</strong></label>
-                            <input type="number" id="delivery-fee" placeholder="0.00" step="0.01" style="max-width: 100px;" oninput="renderOrders()">
-                        </div>
-
-                        <div style="overflow-x: auto;">
-                            <table id="orders-table">
-                                <thead>
-                                    <tr>
-                                        <th>Kto</th>
-                                        <th>Co / Uwagi</th>
-                                        <th>Cena + Dost.</th>
-                                        <th>Zapł.</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="orders-body">
-                                    <!-- Zamówienia generowane przez JS -->
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <div class="total-price" style="border-top: 2px solid #dfe6e9; margin-top: 10px; padding-top: 10px;">
-                            <div id="delivery-calc-info" class="delivery-info"></div>
-                            <strong>Suma: </strong> <span id="total-price-value">0.00</span> zł
-                        </div>
-                    </div>
+                <div style="overflow-x: auto;">
+                    <table id="orders-table">
+                        <thead>
+                            <tr>
+                                <th>Kto</th>
+                                <th>Co / Uwagi</th>
+                                <th>Cena + Dost.</th>
+                                <th>Zapł.</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-body">
+                            <!-- Zamówienia generowane przez JS -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="total-price" style="border-top: 2px solid #dfe6e9; margin-top: 10px; padding-top: 10px;">
+                    <div id="delivery-calc-info" class="delivery-info"></div>
+                    <strong>Suma: </strong> <span id="total-price-value">0.00</span> zł
                 </div>
             </div>
         </div>
