@@ -4,751 +4,153 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Żarcie u Ptaka 🐦🍔</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
-
-        :root {
-            --primary: #0984e3;
-            --secondary: #d63031;
-            --bg: #fdf6e3;
-            --box-bg: #ffffff;
-            --text: #2d3436;
-            --admin-bg: #dfe6e9;
-        }
-
-        body {
-            font-family: 'Nunito', sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: var(--box-bg);
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
-            transition: max-width 0.3s ease;
-        }
-
-        @media (min-width: 1024px) {
-            .container {
-                max-width: 1300px;
-            }
-            .content-wrapper {
-                display: grid;
-                grid-template-columns: 1fr 450px;
-                gap: 25px;
-                align-items: flex-start;
-            }
-            .right-side {
-                position: sticky;
-                top: 20px;
-            }
-        }
-
-        h1 {
-            text-align: center;
-            color: var(--primary);
-            font-size: 2.5em;
-            margin-top: 0;
-            border-bottom: 3px dashed var(--primary);
-            padding-bottom: 10px;
-        }
-
-        h2 {
-            color: var(--primary);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-top: 0;
-        }
-
-        .section {
-            background: #f8f9fa;
-            border: 2px solid #74b9ff;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 25px;
-        }
-
-        .admin-section {
-            background: var(--admin-bg);
-            border-color: #b2bec3;
-            display: none; /* Domyślnie ukryte */
-        }
-
-        .info-header {
-            font-size: 1.2em;
-            margin-bottom: 15px;
-        }
-
-        .menu-list {
-            list-style: none;
-            padding: 0;
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 10px;
-        }
-
-        .menu-item {
-            background: var(--box-bg);
-            padding: 12px 15px;
-            border-radius: 8px;
-            border: 1px solid #dfe6e9;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
-            font-weight: bold;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .menu-price {
-            color: var(--secondary);
-        }
-
-        .form-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        input, select {
-            flex: 1;
-            padding: 10px;
-            border: 2px solid #dfe6e9;
-            border-radius: 8px;
-            font-family: 'Nunito', sans-serif;
-            font-size: 1em;
-            min-width: 150px;
-        }
-
-        button {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 1em;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.2s;
-            font-family: 'Nunito', sans-serif;
-        }
-
-        button:hover {
-            opacity: 0.9;
-            transform: translateY(-2px);
-        }
-
-        .btn-danger { background-color: var(--secondary); }
-        .btn-warning { background-color: #fdcb6e; color: #2d3436; }
-        .btn-success { background-color: #00b894; }
-        .btn-small { padding: 5px 10px; font-size: 0.9em; }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-            background: white;
-        }
-
-        th, td {
-            border-bottom: 1px solid #dfe6e9;
-            padding: 12px;
-            text-align: left;
-        }
-
-        th {
-            background-color: #74b9ff;
-            color: white;
-        }
-
-        .total-price {
-            text-align: right;
-            font-size: 1.5em;
-            color: var(--secondary);
-            margin-top: 15px;
-        }
-
-        .delivery-info {
-            font-size: 0.9em;
-            text-align: right;
-            color: #636e72;
-            margin-bottom: 5px;
-        }
-
-        .paid-row {
-            text-decoration: line-through;
-            opacity: 0.6;
-            background-color: #f1f2f6 !important;
-        }
-
-        .note-text {
-            display: block;
-            font-size: 0.85em;
-            color: #636e72;
-            font-style: italic;
-            margin-top: 4px;
-        }
-
-        .history-section {
-            margin-top: 40px;
-            border-top: 4px double #dfe6e9;
-            padding-top: 20px;
-        }
-
-        .history-item {
-            background: #fff;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-            border-left: 5px solid var(--primary);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-
-        .history-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: var(--primary);
-        }
-
-        .history-orders {
-            font-size: 0.9em;
-            list-style: none;
-            padding: 0;
-        }
-
-        .history-order-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 5px 0;
-            border-bottom: 1px dashed #eee;
-        }
-
-        .toggle-admin-btn {
-            display: block;
-            margin: 0 auto 20px auto;
-            background-color: #636e72;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div class="container">
         <h1>🐦 Żarcie u Ptaka 🍔</h1>
 
-        <!-- PRZYCISK PANELU ADMINISTRATORA -->
-        <button class="toggle-admin-btn" onclick="toggleAdminPanel()">⚙️ Pokaż / Ukryj Panel Administratora</button>
-
-        <!-- SEKCJA ADMINISTRATORA -->
-        <div class="section admin-section" id="admin-panel">
-            <h2>⚙️ Panel Administratora (Ustalanie Menu)</h2>
-            
-            <div class="form-group">
-                <label><strong>Skąd jemy?:</strong></label>
-                <input type="text" id="admin-restaurant-name" placeholder="Nazwa restauracji...">
-                <button class="btn-success" onclick="updateRestaurantName()">Zapisz nazwę</button>
-            </div>
-
-            <hr style="border: 1px solid #b2bec3; margin: 20px 0;">
-
-            <h3>📂 Szablony Restauracji</h3>
-            <div class="form-group">
-                <select id="profile-select">
-                    <option value="">-- Wybierz zapisany szablon --</option>
-                </select>
-                <button class="btn-warning" onclick="loadProfile()">Wczytaj szablon</button>
-                <button class="btn-danger" onclick="deleteProfile()">Usuń szablon</button>
-            </div>
-            <div class="form-group">
-                <button class="btn-success" onclick="saveAsProfile()" style="width: 100%;">💾 Zapisz obecne menu jako nowy szablon</button>
-            </div>
-
-            <hr style="border: 1px solid #b2bec3; margin: 20px 0;">
-
-            <h3>➕ Dodaj pozycję do menu</h3>
-            <div class="form-group">
-                <input type="text" id="admin-item-name" placeholder="Nazwa dania (np. Schabowy)">
-                <input type="number" id="admin-item-price" placeholder="Cena (np. 25.50)" step="0.01" style="max-width: 150px;">
-                <button class="btn-success" onclick="addMenuItem()">Dodaj do menu</button>
-            </div>
-
-            <h3>📋 Aktualne Menu (Edycja)</h3>
-            <ul class="menu-list" id="admin-menu-list">
-                <!-- Lista menu admina generowana przez JS -->
-            </ul>
+        <!-- TABS NAVIGATION -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('orders-tab')">🛒 Zamówienia</button>
+            <button class="tab-btn" onclick="switchTab('history-tab')">📜 Historia</button>
+            <button class="tab-btn" onclick="switchTab('admin-tab')">⚙️ Panel Admina</button>
         </div>
 
-        <div class="content-wrapper">
-            <div class="left-side">
-                <!-- SEKCJA INFO O DZISIEJSZYM JEDZENIU -->
-                <div class="section">
-                    <h2>📍 Co i skąd dzisiaj jemy?</h2>
-                    <div class="info-header">
-                        <strong>Data:</strong> <span id="current-date"></span><br>
-                        <strong>Restauracja:</strong> <strong style="color: var(--secondary); font-size: 1.2em;" id="restaurant-name"></strong>
+        <!-- TAB: ORDERS -->
+        <div id="orders-tab" class="tab-content active">
+            <div class="content-wrapper">
+                <div class="left-side">
+                    <!-- SEKCJA INFO O DZISIEJSZYM JEDZENIU -->
+                    <div class="section">
+                        <h2>📍 Co i skąd dzisiaj jemy?</h2>
+                        <div class="info-header">
+                            <strong>Data:</strong> <span id="current-date"></span><br>
+                            <strong>Restauracja:</strong> <strong style="color: var(--secondary); font-size: 1.2em;" id="restaurant-name"></strong>
+                        </div>
+                        
+                        <h3>📜 Menu na dziś:</h3>
+                        <ul class="menu-list" id="menu-list">
+                            <!-- Menu generowane przez JS -->
+                        </ul>
                     </div>
-                    
-                    <h3>📜 Menu na dziś:</h3>
-                    <ul class="menu-list" id="menu-list">
-                        <!-- Menu generowane przez JS dla użytkowników -->
-                    </ul>
+
+                    <!-- SEKCJA FORMULARZA ZAMÓWIENIA -->
+                    <div class="section">
+                        <h2>✍️ Złóż zamówienie</h2>
+                        <div class="form-group">
+                            <input type="text" id="user-name" placeholder="Wpisz swoje imię..." list="common-names">
+                            <datalist id="common-names">
+                                <option value="Michał"></option>
+                                <option value="Kasia"></option>
+                                <option value="Piotrek"></option>
+                                <option value="Ania"></option>
+                            </datalist>
+
+                            <select id="item-select">
+                                <option value="">-- Wybierz z menu --</option>
+                            </select>
+
+                            <input type="text" id="order-note" placeholder="Uwagi (np. bez cebuli, sos ostry)...">
+
+                            <button onclick="addOrder()">Zamawiam!</button>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- SEKCJA FORMULARZA ZAMÓWIENIA -->
-                <div class="section">
-                    <h2>✍️ Złóż zamówienie</h2>
-                    <div class="form-group">
-                        <input type="text" id="user-name" placeholder="Wpisz swoje imię (kto zamawia?)..." list="common-names">
-                        <datalist id="common-names">
-                            <option value="Michał"></option>
-                            <option value="Kasia"></option>
-                            <option value="Piotrek"></option>
-                            <option value="Ania"></option>
-                        </datalist>
-
-                        <select id="item-select">
-                            <option value="">-- Wybierz z menu --</option>
-                            <!-- Opcje generowane przez JS -->
-                        </select>
-
-                        <input type="text" id="order-note" placeholder="Uwagi (np. bez cebuli, sos ostry)...">
-
-                        <button onclick="addOrder()">Zamawiam!</button>
-                        </div>
-                        </div>
+                <div class="right-side">
+                    <!-- SEKCJA PODSUMOWANIA -->
+                    <div class="section">
+                        <h2>🛒 Lista zamówień</h2>
+                        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                            <button class="btn-success" onclick="archiveDay()" style="flex: 1;">✅ Zakończ i Zapisz Dzień</button>
+                            <button class="btn-warning" onclick="clearAllOrders()" style="flex: 1;">🗑️ Wyczyść (Reset)</button>
                         </div>
 
-                        <div class="right-side">
-                            <!-- SEKCJA PODSUMOWANIA -->
-                            <div class="section">
-                                <h2>🛒 Lista zamówień</h2>
-                                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                                    <button class="btn-success" onclick="archiveDay()" style="flex: 1;">✅ Zakończ i Zapisz Dzień</button>
-                                    <button class="btn-warning" onclick="clearAllOrders()" style="flex: 1;">🗑️ Wyczyść (Reset)</button>
-                                </div>
-
-                                <div class="form-group" style="margin-bottom: 20px; border-bottom: 1px solid #dfe6e9; padding-bottom: 15px;">                        <label style="font-size: 0.9em;"><strong>Koszt dostawy (łącznie):</strong></label>
-                        <input type="number" id="delivery-fee" placeholder="0.00" step="0.01" style="max-width: 100px;" oninput="renderOrders()">
+                        <div class="form-group" style="margin-bottom: 20px; border-bottom: 1px solid #dfe6e9; padding-bottom: 15px;">
+                            <label style="font-size: 0.9em;"><strong>Koszt dostawy (łącznie):</strong></label>
+                            <input type="number" id="delivery-fee" placeholder="0.00" step="0.01" style="max-width: 100px;" oninput="renderOrders()">
                         </div>
 
                         <div style="overflow-x: auto;">
-                        <table id="orders-table">
-                            <thead>
-                                <tr>
-                                    <th>Kto</th>
-                                    <th>Co / Uwagi</th>
-                                    <th>Cena + Dost.</th>
-                                    <th>Zapł.</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody id="orders-body">                                <!-- Zamówienia generowane przez JS -->
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <div class="total-price" style="border-top: 2px solid #dfe6e9; margin-top: 10px; padding-top: 10px;">
-                        <div id="delivery-calc-info" class="delivery-info"></div>
-                        <strong>Suma: </strong> <span id="total-price-value">0.00</span> zł
+                            <table id="orders-table">
+                                <thead>
+                                    <tr>
+                                        <th>Kto</th>
+                                        <th>Co / Uwagi</th>
+                                        <th>Cena + Dost.</th>
+                                        <th>Zapł.</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="orders-body">
+                                    <!-- Zamówienia generowane przez JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="total-price" style="border-top: 2px solid #dfe6e9; margin-top: 10px; padding-top: 10px;">
+                            <div id="delivery-calc-info" class="delivery-info"></div>
+                            <strong>Suma: </strong> <span id="total-price-value">0.00</span> zł
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- SEKCJA HISTORII -->
-        <div class="history-section" id="history-container">
-            <h2>📜 Historia zamówień</h2>
-            <div id="history-list">
-                <!-- Historia generowana przez JS -->
-                <p style="color: #636e72; font-style: italic;">Brak archiwalnych zamówień.</p>
+        <!-- TAB: HISTORY -->
+        <div id="history-tab" class="tab-content">
+            <div class="section history-section">
+                <h2>📜 Historia zamówień</h2>
+                <div id="history-list">
+                    <!-- Historia generowana przez JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: ADMIN -->
+        <div id="admin-tab" class="tab-content">
+            <div class="section admin-section">
+                <h2>⚙️ Panel Administratora (Ustalanie Menu)</h2>
+                
+                <div class="form-group">
+                    <label><strong>Skąd jemy?:</strong></label>
+                    <input type="text" id="admin-restaurant-name" placeholder="Nazwa restauracji...">
+                    <button class="btn-success" onclick="updateRestaurantName()">Zapisz nazwę</button>
+                </div>
+
+                <hr style="border: 1px solid #b2bec3; margin: 20px 0;">
+
+                <h3>📂 Szablony Restauracji</h3>
+                <div class="form-group">
+                    <select id="profile-select">
+                        <option value="">-- Wybierz zapisany szablon --</option>
+                    </select>
+                    <button class="btn-warning" onclick="loadProfile()">Wczytaj szablon</button>
+                    <button class="btn-danger" onclick="deleteProfile()">Usuń szablon</button>
+                </div>
+                <div class="form-group">
+                    <button class="btn-success" onclick="saveAsProfile()" style="width: 100%;">💾 Zapisz obecne menu jako nowy szablon</button>
+                </div>
+
+                <hr style="border: 1px solid #b2bec3; margin: 20px 0;">
+
+                <h3>➕ Dodaj pozycję do menu</h3>
+                <div class="form-group">
+                    <input type="text" id="admin-item-name" placeholder="Nazwa dania (np. Schabowy)">
+                    <input type="number" id="admin-item-price" placeholder="Cena (np. 25.50)" step="0.01" style="max-width: 150px;">
+                    <button class="btn-success" onclick="addMenuItem()">Dodaj do menu</button>
+                </div>
+
+                <h3>📋 Aktualne Menu (Edycja)</h3>
+                <ul class="menu-list" id="admin-menu-list">
+                    <!-- Lista menu admina generowana przez JS -->
+                </ul>
             </div>
         </div>
     </div>
 
-    <script>
-        // --- 1. USTAWIENIE DATY ---
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        document.getElementById('current-date').innerText = new Date().toLocaleDateString('pl-PL', options);
-
-        // --- 2. DANE DOMYŚLNE I POBIERANIE Z LOCAL STORAGE ---
-        const defaultMenu =[
-            { id: 1, name: "Schabowy z ziemniakami i mizerią", price: 26.00 },
-            { id: 2, name: "Pizza Margherita (32cm)", price: 29.00 },
-            { id: 3, name: "Pad Thai z Kurczakiem", price: 34.00 },
-            { id: 4, name: "Zupa Pomidorowa", price: 12.00 },
-            { id: 5, name: "Burger Drwala z frytkami", price: 38.00 }
-        ];
-
-        let dailyMenu = JSON.parse(localStorage.getItem('ptakMenu')) || defaultMenu;
-        let restaurantName = localStorage.getItem('ptakRestaurant') || "Bistro pod Pijanym Ptakiem";
-        let orders = JSON.parse(localStorage.getItem('ptakOrders')) ||[];
-        let history = JSON.parse(localStorage.getItem('ptakHistory')) || [];
-        let profiles = JSON.parse(localStorage.getItem('ptakProfiles')) || {};
-
-        // --- 3. INICJALIZACJA APLIKACJI ---
-        function initApp() {
-            renderRestaurantName();
-            renderMenu();
-            renderAdminMenu();
-            renderOrders();
-            renderHistory();
-            renderProfileList();
-        }
-
-        // --- 4. FUNKCJE ADMINISTRATORA ---
-        function toggleAdminPanel() {
-            const panel = document.getElementById('admin-panel');
-            
-            // Jeśli panel jest ukryty, prosimy o hasło
-            if (panel.style.display === "none" || panel.style.display === "") {
-                const pass = prompt("Podaj hasło administratora:");
-                if (pass === "ptak123") {
-                    panel.style.display = "block";
-                    document.getElementById('admin-restaurant-name').value = restaurantName;
-                    renderProfileList();
-                } else if (pass !== null) {
-                    alert("❌ Błędne hasło!");
-                }
-            } else {
-                panel.style.display = "none";
-            }
-        }
-
-        function updateRestaurantName() {
-            const newName = document.getElementById('admin-restaurant-name').value.trim();
-            if (newName !== "") {
-                restaurantName = newName;
-                localStorage.setItem('ptakRestaurant', restaurantName);
-                renderRestaurantName();
-                alert("Zaktualizowano nazwę restauracji!");
-            }
-        }
-
-        function renderRestaurantName() {
-            document.getElementById('restaurant-name').innerText = restaurantName;
-        }
-
-        function saveAsProfile() {
-            if (dailyMenu.length === 0) {
-                alert("Menu jest puste! Dodaj najpierw dania.");
-                return;
-            }
-
-            const profileName = prompt("Podaj nazwę dla tego szablonu (np. Nazwa Restauracji):", restaurantName);
-            if (profileName) {
-                profiles[profileName] = {
-                    name: restaurantName,
-                    menu: [...dailyMenu]
-                };
-                localStorage.setItem('ptakProfiles', JSON.stringify(profiles));
-                renderProfileList();
-                alert(`Zapisano szablon: ${profileName}`);
-            }
-        }
-
-        function loadProfile() {
-            const profileName = document.getElementById('profile-select').value;
-            if (!profileName) {
-                alert("Wybierz szablon z listy!");
-                return;
-            }
-
-            if (confirm(`Czy chcesz wczytać szablon "${profileName}"? Obecne menu zostanie zastąpione.`)) {
-                const profile = profiles[profileName];
-                restaurantName = profile.name;
-                dailyMenu = [...profile.menu];
-                
-                localStorage.setItem('ptakRestaurant', restaurantName);
-                saveMenu(); // To zaktualizuje UI i localStorage dla menu
-                renderRestaurantName();
-                alert(`Wczytano: ${profileName}`);
-            }
-        }
-
-        function deleteProfile() {
-            const profileName = document.getElementById('profile-select').value;
-            if (!profileName) return;
-
-            if (confirm(`Czy na pewno usunąć szablon "${profileName}"?`)) {
-                delete profiles[profileName];
-                localStorage.setItem('ptakProfiles', JSON.stringify(profiles));
-                renderProfileList();
-            }
-        }
-
-        function renderProfileList() {
-            const select = document.getElementById('profile-select');
-            select.innerHTML = '<option value="">-- Wybierz zapisany szablon --</option>';
-            
-            Object.keys(profiles).forEach(pName => {
-                const opt = document.createElement('option');
-                opt.value = pName;
-                opt.innerText = pName;
-                select.appendChild(opt);
-            });
-        }
-
-        function addMenuItem() {
-            const nameInput = document.getElementById('admin-item-name').value.trim();
-            const priceInput = parseFloat(document.getElementById('admin-item-price').value);
-
-            if (nameInput === "" || isNaN(priceInput)) {
-                alert("Podaj poprawną nazwę i cenę (np. 15.50).");
-                return;
-            }
-
-            const newItem = {
-                id: Date.now(), // generowanie unikalnego ID
-                name: nameInput,
-                price: priceInput
-            };
-
-            dailyMenu.push(newItem);
-            saveMenu();
-            
-            // Czyszczenie inputów admina
-            document.getElementById('admin-item-name').value = "";
-            document.getElementById('admin-item-price').value = "";
-        }
-
-        function deleteMenuItem(id) {
-            if(confirm("Usunąć tę pozycję z menu?")) {
-                dailyMenu = dailyMenu.filter(item => item.id !== id);
-                saveMenu();
-            }
-        }
-
-        function saveMenu() {
-            localStorage.setItem('ptakMenu', JSON.stringify(dailyMenu));
-            renderMenu();
-            renderAdminMenu();
-        }
-
-        function renderAdminMenu() {
-            const adminMenuList = document.getElementById('admin-menu-list');
-            adminMenuList.innerHTML = "";
-
-            dailyMenu.forEach(item => {
-                let li = document.createElement('li');
-                li.className = 'menu-item';
-                li.innerHTML = `
-                    <span>${item.name} - <span class="menu-price">${item.price.toFixed(2)} zł</span></span>
-                    <button class="btn-danger btn-small" onclick="deleteMenuItem(${item.id})">Usuń</button>
-                `;
-                adminMenuList.appendChild(li);
-            });
-        }
-
-        // --- 5. FUNKCJE DLA ZWYKŁEGO UŻYTKOWNIKA ---
-        function renderMenu() {
-            const menuList = document.getElementById('menu-list');
-            const itemSelect = document.getElementById('item-select');
-            
-            menuList.innerHTML = "";
-            itemSelect.innerHTML = '<option value="">-- Wybierz z menu --</option>';
-
-            dailyMenu.forEach(item => {
-                // Lista wyświetlana wizualnie
-                let li = document.createElement('li');
-                li.className = 'menu-item';
-                li.innerHTML = `${item.name} <span class="menu-price">${item.price.toFixed(2)} zł</span>`;
-                menuList.appendChild(li);
-
-                // Lista w formularzu (select)
-                let option = document.createElement('option');
-                option.value = item.id;
-                option.innerText = `${item.name} (${item.price.toFixed(2)} zł)`;
-                itemSelect.appendChild(option);
-            });
-        }
-
-        function addOrder() {
-            const userNameInput = document.getElementById('user-name').value.trim();
-            const itemId = parseInt(document.getElementById('item-select').value);
-            const noteInput = document.getElementById('order-note').value.trim();
-
-            if (userNameInput === "" || isNaN(itemId)) {
-                alert("❗ Proszę wpisać swoje imię i wybrać danie z listy.");
-                return;
-            }
-
-            const selectedItem = dailyMenu.find(m => m.id === itemId);
-            
-            const newOrder = {
-                id: Date.now(),
-                user: userNameInput,
-                item: selectedItem,
-                note: noteInput,
-                paid: false
-            };
-
-            orders.push(newOrder);
-            saveOrders();
-            
-            // Czyszczenie po zamówieniu (zostawiamy imię)
-            document.getElementById('item-select').value = "";
-            document.getElementById('order-note').value = "";
-        }
-
-        function togglePaid(orderId) {
-            const order = orders.find(o => o.id === orderId);
-            if (order) {
-                order.paid = !order.paid;
-                saveOrders();
-            }
-        }
-
-        function deleteOrder(orderId) {
-            orders = orders.filter(o => o.id !== orderId);
-            saveOrders();
-        }
-
-        function clearAllOrders() {
-            if(confirm("Czy na pewno chcesz wyczyścić dzisiejszą listę BEZ zapisywania do historii?")) {
-                orders =[];
-                saveOrders();
-            }
-        }
-
-        function archiveDay() {
-            if (orders.length === 0) {
-                alert("Nie ma żadnych zamówień do zapisania!");
-                return;
-            }
-
-            if (confirm("Czy chcesz zakończyć dzień i zapisać zamówienia do historii?")) {
-                const historyEntry = {
-                    id: Date.now(),
-                    date: new Date().toLocaleDateString('pl-PL', options),
-                    restaurant: restaurantName,
-                    orders: [...orders],
-                    total: document.getElementById('total-price-value').innerText
-                };
-
-                history.unshift(historyEntry); // Dodaj na początek
-                if (history.length > 10) history.pop(); // Trzymaj max 10 dni
-
-                localStorage.setItem('ptakHistory', JSON.stringify(history));
-                
-                orders = [];
-                saveOrders();
-                renderHistory();
-                alert("Dzień zapisany w historii! 🎉");
-            }
-        }
-
-        function saveOrders() {
-            localStorage.setItem('ptakOrders', JSON.stringify(orders));
-            renderOrders();
-        }
-
-        function renderOrders() {
-            const tbody = document.getElementById('orders-body');
-            const deliveryFeeInput = document.getElementById('delivery-fee');
-            const deliveryCalcInfo = document.getElementById('delivery-calc-info');
-            
-            tbody.innerHTML = "";
-            let itemsPrice = 0;
-
-            const deliveryFeeTotal = parseFloat(deliveryFeeInput.value) || 0;
-            const uniqueUsers = [...new Set(orders.map(o => o.user))].length;
-            const deliveryPerPerson = uniqueUsers > 0 ? (deliveryFeeTotal / uniqueUsers) : 0;
-
-            if (deliveryFeeTotal > 0) {
-                deliveryCalcInfo.innerText = `Dostawa: ${deliveryFeeTotal.toFixed(2)} zł / ${uniqueUsers} os. = +${deliveryPerPerson.toFixed(2)} zł/os.`;
-            } else {
-                deliveryCalcInfo.innerText = "";
-            }
-
-            const userDeliveryPaid = {};
-
-            orders.forEach(order => {
-                let tr = document.createElement('tr');
-                if (order.paid) tr.className = 'paid-row';
-                
-                let orderDeliveryPart = 0;
-                if (!userDeliveryPaid[order.user]) {
-                    orderDeliveryPart = deliveryPerPerson;
-                    userDeliveryPaid[order.user] = true;
-                }
-
-                const priceWithDelivery = order.item.price + orderDeliveryPart;
-
-                tr.innerHTML = `
-                    <td><strong>${order.user}</strong></td>
-                    <td>
-                        ${order.item.name}
-                        ${order.note ? `<span class="note-text">💬 ${order.note}</span>` : ""}
-                    </td>
-                    <td>${priceWithDelivery.toFixed(2)} zł</td>
-                    <td>
-                        <input type="checkbox" ${order.paid ? 'checked' : ''} onchange="togglePaid(${order.id})">
-                    </td>
-                    <td><button class="btn-danger btn-small" onclick="deleteOrder(${order.id})">❌</button></td>
-                `;
-                
-                tbody.appendChild(tr);
-                itemsPrice += order.item.price;
-            });
-
-            const finalTotal = itemsPrice + deliveryFeeTotal;
-            document.getElementById('total-price-value').innerText = finalTotal.toFixed(2);
-        }
-
-        function renderHistory() {
-            const historyList = document.getElementById('history-list');
-            if (history.length === 0) return;
-
-            historyList.innerHTML = "";
-            history.forEach(entry => {
-                const div = document.createElement('div');
-                div.className = 'history-item';
-                
-                let ordersHtml = entry.orders.map(o => `
-                    <li class="history-order-row">
-                        <span><strong>${o.user}</strong>: ${o.item.name} ${o.note ? `(${o.note})` : ''}</span>
-                        <button class="btn-small" onclick="reorder('${o.user}', ${o.item.id}, '${o.note || ''}')">Ponów 🔄</button>
-                    </li>
-                `).join('');
-
-                div.innerHTML = `
-                    <div class="history-header">
-                        <span>📅 ${entry.date} - ${entry.restaurant}</span>
-                        <span>Suma: ${entry.total} zł</span>
-                    </div>
-                    <ul class="history-orders">
-                        ${ordersHtml}
-                    </ul>
-                `;
-                historyList.appendChild(div);
-            });
-        }
-
-        function reorder(user, itemId, note) {
-            document.getElementById('user-name').value = user;
-            document.getElementById('item-select').value = itemId;
-            document.getElementById('order-note').value = note;
-            
-            // Przewiń do formularza
-            document.querySelector('.left-side .section:last-child').scrollIntoView({ behavior: 'smooth' });
-            
-            // Opcjonalnie: można od razu dodać, ale lepiej pozwolić użytkownikowi sprawdzić
-            alert(`Uzupełniono formularz dla: ${user}. Kliknij 'Zamawiam!', aby potwierdzić.`);
-        }
-
-        // --- 6. URUCHOMIENIE APLIKACJI NA STARCIE ---
-        initApp();
-
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
