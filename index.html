@@ -28,6 +28,7 @@
                         <div class="info-header">
                             <strong>Data:</strong> <span id="current-date"></span><br>
                             <strong>Restauracja:</strong> <strong style="color: var(--secondary); font-size: 1.2em;" id="restaurant-name"></strong>
+                            <span id="order-limit-display"></span>
                         </div>
                         
                         <h3>📜 Menu na dziś:</h3>
@@ -118,6 +119,12 @@
                     <label><strong>Skąd jemy?:</strong></label>
                     <input type="text" id="admin-restaurant-name" placeholder="Nazwa restauracji...">
                     <button class="btn-success" onclick="updateRestaurantName()">Zapisz nazwę</button>
+                </div>
+
+                <div class="form-group">
+                    <label><strong>Limit czasu (godzina):</strong></label>
+                    <input type="time" id="admin-order-limit" style="max-width: 150px;">
+                    <button class="btn-success" onclick="updateOrderLimit()">Zapisz limit</button>
                 </div>
 
                 <hr style="border: 1px solid #b2bec3; margin: 20px 0;">

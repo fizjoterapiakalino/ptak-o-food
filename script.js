@@ -13,6 +13,7 @@ const defaultMenu =[
 
 let dailyMenu = JSON.parse(localStorage.getItem('ptakMenu')) || defaultMenu;
 let restaurantName = localStorage.getItem('ptakRestaurant') || "Bistro pod Pijanym Ptakiem";
+let orderLimit = localStorage.getItem('ptakOrderLimit') || ""; 
 let orders = JSON.parse(localStorage.getItem('ptakOrders')) ||[];
 let history = JSON.parse(localStorage.getItem('ptakHistory')) || [];
 let profiles = JSON.parse(localStorage.getItem('ptakProfiles')) || {};
@@ -25,6 +26,7 @@ function initApp() {
     renderOrders();
     renderHistory();
     renderProfileList();
+    renderOrderLimitInfo();
 }
 
 // --- TABS LOGIC ---
@@ -55,6 +57,32 @@ function switchTab(tabId) {
 }
 
 // --- 4. FUNKCJE ADMINISTRATORA ---
+function updateOrderLimit() {
+    const limitInput = document.getElementById('admin-order-limit').value;
+    if (limitInput !== "") {
+        orderLimit = limitInput;
+        localStorage.setItem('ptakOrderLimit', orderLimit);
+        renderOrderLimitInfo();
+        alert(`Ustawiono limit zamówień na godzinę: ${orderLimit}`);
+    } else {
+        orderLimit = "";
+        localStorage.removeItem('ptakOrderLimit');
+        renderOrderLimitInfo();
+        alert("Usunięto limit czasowy.");
+    }
+}
+
+function renderOrderLimitInfo() {
+    const infoContainer = document.getElementById('order-limit-display');
+    if (!infoContainer) return;
+
+    if (orderLimit) {
+        infoContainer.innerHTML = `<br><strong>Zamówienia do godziny:</strong> <strong style="color: var(--secondary);">${orderLimit}</strong>`;
+    } else {
+        infoContainer.innerHTML = "";
+    }
+}
+
 function updateRestaurantName() {
     const newName = document.getElementById('admin-restaurant-name').value.trim();
     if (newName !== "") {
@@ -214,6 +242,19 @@ function addOrder() {
     if (userNameInput === "" || isNaN(itemId)) {
         alert("❗ Proszę wpisać swoje imię i wybrać danie z listy.");
         return;
+    }
+
+    // Sprawdzenie limitu czasu
+    if (orderLimit) {
+        const now = new Date();
+        const [limitHours, limitMinutes] = orderLimit.split(':').map(Number);
+        const limitDate = new Date();
+        limitDate.setHours(limitHours, limitMinutes, 0, 0);
+
+        if (now > limitDate) {
+            alert(`❌ Przykro mi, ale czas na składanie zamówień minął o godzinie ${orderLimit}.`);
+            return;
+        }
     }
 
     const selectedItem = dailyMenu.find(m => m.id === itemId);
