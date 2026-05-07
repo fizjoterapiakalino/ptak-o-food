@@ -3,168 +3,173 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Żarcie u Ptaka 🐦🍔</title>
+    <title>Ptakovo | szybkie zamawianie</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <main class="app-shell">
+        <header class="topbar">
+            <div>
+                <p class="eyebrow">Wspólne zamawianie jedzenia</p>
+                <h1 class="brand-lockup">
+                    <img class="brand-mark" src="logo2.png" alt="Ptakovo">
+                </h1>
+            </div>
+            <div class="status-pill" id="order-limit-display"></div>
+        </header>
 
-    <div class="container">
-        <h1>🐦 Żarcie u Ptaka 🍔</h1>
+        <nav class="tabs" aria-label="Nawigacja">
+            <button class="tab-btn active" onclick="switchTab('orders-tab')">Zamów</button>
+            <button class="tab-btn" onclick="switchTab('summary-tab')">Lista</button>
+            <button class="tab-btn" onclick="switchTab('history-tab')">Historia</button>
+            <button class="tab-btn" onclick="switchTab('admin-tab')">Admin</button>
+        </nav>
 
-        <!-- TABS NAVIGATION -->
-        <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('orders-tab')">🛒 Zamówienia</button>
-            <button class="tab-btn" onclick="switchTab('summary-tab')">📊 Lista zamówień</button>
-            <button class="tab-btn" onclick="switchTab('history-tab')">📜 Historia</button>
-            <button class="tab-btn" onclick="switchTab('admin-tab')">⚙️ Panel Admina</button>
-        </div>
-
-        <!-- TAB: ORDERS -->
-        <div id="orders-tab" class="tab-content active">
-            <div class="orders-container">
-                <!-- LEWA KOLUMNA: MENU -->
-                <div class="left-side">
-                    <div class="section">
-                        <h2>📍 Co i skąd dzisiaj jemy?</h2>
-                        <div class="info-header">
-                            <strong>Data:</strong> <span id="current-date"></span><br>
-                            <strong>Restauracja:</strong> <strong style="color: var(--secondary); font-size: 1.2em;" id="restaurant-name"></strong>
-                            <span id="order-limit-display"></span>
-                        </div>
-                        
-                        <h3>📜 Menu na dziś (kliknij, aby wybrać):</h3>
-                        <ul class="menu-list" id="menu-list">
-                            <!-- Menu generowane przez JS -->
-                        </ul>
-                    </div>
+        <section id="orders-tab" class="tab-content active">
+            <div class="hero-panel">
+                <div>
+                    <p class="date-line" id="current-date"></p>
+                    <h2 id="restaurant-name">Ładowanie...</h2>
+                    <p>Wpisz imię, wybierz danie i potwierdź. Bez przeklikiwania koszyka.</p>
                 </div>
-
-                <!-- PRAWA KOLUMNA: FORMULARZ -->
-                <div class="right-side sticky-order-form">
-                    <div class="section">
-                        <h2>✍️ Złóż zamówienie</h2>
-                        <div class="form-group" style="flex-direction: column; align-items: stretch;">
-                            <label><strong>Kto zamawia?:</strong></label>
-                            <input type="text" id="user-name" placeholder="Twoje imię..." list="common-names">
-                            <datalist id="common-names">
-                                <option value="Michał"></option>
-                                <option value="Kasia"></option>
-                                <option value="Piotrek"></option>
-                                <option value="Ania"></option>
-                            </datalist>
-
-                            <label style="margin-top: 10px;"><strong>Wybrane danie:</strong></label>
-                            <span id="selected-item-display" class="selection-info">Najpierw kliknij danie z menu</span>
-                            <input type="hidden" id="item-select-id" value="">
-
-                            <label style="margin-top: 10px;"><strong>Uwagi:</strong></label>
-                            <input type="text" id="order-note" placeholder="np. bez cebuli, sos ostry...">
-
-                            <button onclick="addOrder()" style="margin-top: 15px; width: 100%;">🚀 Zamawiam!</button>
-                        </div>
-                    </div>
+                <div class="order-count">
+                    <span id="orders-count">0</span>
+                    <small>zamówień</small>
                 </div>
             </div>
-        </div>
 
-        <!-- TAB: SUMMARY (LISTA ZAMÓWIEŃ) -->
-        <div id="summary-tab" class="tab-content">
+            <div class="orders-container">
+                <section class="section menu-section">
+                    <div class="section-heading">
+                        <div>
+                            <p class="eyebrow">Dzisiejsze menu</p>
+                            <h3>Wybierz danie</h3>
+                        </div>
+                    </div>
+                    <ul class="menu-list" id="menu-list"></ul>
+                </section>
+
+                <aside class="section order-card sticky-order-form">
+                    <p class="eyebrow">Twoje zamówienie</p>
+                    <h3>Potwierdź w 10 sekund</h3>
+
+                    <label for="user-name">Imię</label>
+                    <input type="text" id="user-name" placeholder="np. Michał" list="common-names" autocomplete="name">
+                    <datalist id="common-names">
+                        <option value="Michał"></option>
+                        <option value="Kasia"></option>
+                        <option value="Piotrek"></option>
+                        <option value="Ania"></option>
+                    </datalist>
+
+                    <label>Wybrane danie</label>
+                    <div id="selected-item-display" class="selection-info">Kliknij danie z menu</div>
+                    <input type="hidden" id="item-select-id" value="">
+
+                    <label for="order-note">Uwagi</label>
+                    <input type="text" id="order-note" placeholder="np. bez cebuli">
+
+                    <button class="primary-action" onclick="addOrder()">Zamawiam</button>
+                </aside>
+            </div>
+        </section>
+
+        <section id="summary-tab" class="tab-content">
             <div class="section">
-                <h2>🛒 Aktualna lista zamówień</h2>
-                <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
-                    <button class="btn-success" onclick="archiveDay()" style="flex: 1; min-width: 200px;">✅ Zakończ i Zapisz Dzień</button>
-                    <button class="btn-warning" onclick="clearAllOrders()" style="flex: 1; min-width: 200px;">🗑️ Wyczyść (Reset)</button>
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Aktualnie</p>
+                        <h3>Lista zamówień</h3>
+                    </div>
+                    <div class="action-row">
+                        <button class="btn-success" onclick="archiveDay()">Zakończ dzień</button>
+                        <button class="btn-warning" onclick="clearAllOrders()">Reset</button>
+                    </div>
                 </div>
 
-                <div class="form-group" style="margin-bottom: 20px; border-bottom: 1px solid #dfe6e9; padding-bottom: 15px;">
-                    <label style="font-size: 0.9em;"><strong>Koszt dostawy (łącznie):</strong></label>
-                    <input type="number" id="delivery-fee" placeholder="0.00" step="0.01" style="max-width: 100px;" oninput="renderOrders()">
+                <div class="delivery-row">
+                    <label for="delivery-fee">Koszt dostawy</label>
+                    <input type="number" id="delivery-fee" placeholder="0.00" step="0.01" oninput="renderOrders()">
                 </div>
 
-                <div style="overflow-x: auto;">
+                <div class="table-wrap">
                     <table id="orders-table">
                         <thead>
                             <tr>
                                 <th>Kto</th>
-                                <th>Co / Uwagi</th>
-                                <th>Cena + Dost.</th>
+                                <th>Co</th>
+                                <th>Cena</th>
                                 <th>Zapł.</th>
                                 <th></th>
                             </tr>
                         </thead>
-                        <tbody id="orders-body">
-                            <!-- Zamówienia generowane przez JS -->
-                        </tbody>
+                        <tbody id="orders-body"></tbody>
                     </table>
                 </div>
-                
-                <div class="total-price" style="border-top: 2px solid #dfe6e9; margin-top: 10px; padding-top: 10px;">
+
+                <div class="total-price">
                     <div id="delivery-calc-info" class="delivery-info"></div>
-                    <strong>Suma: </strong> <span id="total-price-value">0.00</span> zł
+                    <strong>Suma:</strong> <span id="total-price-value">0.00</span> zł
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- TAB: HISTORY -->
-        <div id="history-tab" class="tab-content">
+        <section id="history-tab" class="tab-content">
             <div class="section history-section">
-                <h2>📜 Historia zamówień</h2>
-                <div id="history-list">
-                    <!-- Historia generowana przez JS -->
-                </div>
+                <p class="eyebrow">Archiwum</p>
+                <h3>Historia zamówień</h3>
+                <div id="history-list"></div>
             </div>
-        </div>
+        </section>
 
-        <!-- TAB: ADMIN -->
-        <div id="admin-tab" class="tab-content">
+        <section id="admin-tab" class="tab-content">
             <div class="section admin-section">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h2 style="margin: 0;">⚙️ Panel Administratora</h2>
-                    <button class="btn-danger btn-small" onclick="logoutAdmin()">🚪 Wyloguj</button>
-                </div>
-                
-                <div class="form-group">
-                    <label><strong>Skąd jemy?:</strong></label>
-                    <input type="text" id="admin-restaurant-name" placeholder="Nazwa restauracji...">
-                    <button class="btn-success" onclick="updateRestaurantName()">Zapisz nazwę</button>
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Ustawienia</p>
+                        <h3>Panel administratora</h3>
+                    </div>
+                    <button class="btn-danger btn-small" onclick="logoutAdmin()">Wyloguj</button>
                 </div>
 
                 <div class="form-group">
-                    <label><strong>Limit czasu (godzina):</strong></label>
-                    <input type="time" id="admin-order-limit" style="max-width: 150px;">
-                    <button class="btn-success" onclick="updateOrderLimit()">Zapisz limit</button>
+                    <label for="admin-restaurant-name">Skąd jemy?</label>
+                    <input type="text" id="admin-restaurant-name" placeholder="Nazwa restauracji">
+                    <button class="btn-success" onclick="updateRestaurantName()">Zapisz</button>
                 </div>
 
-                <hr style="border: 1px solid #b2bec3; margin: 20px 0;">
+                <div class="form-group">
+                    <label for="admin-order-limit">Zamówienia do</label>
+                    <input type="time" id="admin-order-limit">
+                    <button class="btn-success" onclick="updateOrderLimit()">Zapisz</button>
+                </div>
 
-                <h3>📂 Szablony Restauracji</h3>
+                <hr>
+
+                <h3>Szablony restauracji</h3>
                 <div class="form-group">
                     <select id="profile-select">
-                        <option value="">-- Wybierz zapisany szablon --</option>
+                        <option value="">Wybierz zapisany szablon</option>
                     </select>
-                    <button class="btn-warning" onclick="loadProfile()">Wczytaj szablon</button>
-                    <button class="btn-danger" onclick="deleteProfile()">Usuń szablon</button>
+                    <button class="btn-warning" onclick="loadProfile()">Wczytaj</button>
+                    <button class="btn-danger" onclick="deleteProfile()">Usuń</button>
                 </div>
+                <button class="btn-success full-width" onclick="saveAsProfile()">Zapisz obecne menu jako szablon</button>
+
+                <hr>
+
+                <h3>Dodaj pozycję do menu</h3>
                 <div class="form-group">
-                    <button class="btn-success" onclick="saveAsProfile()" style="width: 100%;">💾 Zapisz obecne menu jako nowy szablon</button>
+                    <input type="text" id="admin-item-name" placeholder="Nazwa dania">
+                    <input type="number" id="admin-item-price" placeholder="Cena" step="0.01">
+                    <button class="btn-success" onclick="addMenuItem()">Dodaj</button>
                 </div>
 
-                <hr style="border: 1px solid #b2bec3; margin: 20px 0;">
-
-                <h3>➕ Dodaj pozycję do menu</h3>
-                <div class="form-group">
-                    <input type="text" id="admin-item-name" placeholder="Nazwa dania (np. Schabowy)">
-                    <input type="number" id="admin-item-price" placeholder="Cena (np. 25.50)" step="0.01" style="max-width: 150px;">
-                    <button class="btn-success" onclick="addMenuItem()">Dodaj do menu</button>
-                </div>
-
-                <h3>📋 Aktualne Menu (Edycja)</h3>
-                <ul class="menu-list" id="admin-menu-list">
-                    <!-- Lista menu admina generowana przez JS -->
-                </ul>
+                <h3>Aktualne menu</h3>
+                <ul class="menu-list" id="admin-menu-list"></ul>
             </div>
-        </div>
-    </div>
+        </section>
+    </main>
 
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
