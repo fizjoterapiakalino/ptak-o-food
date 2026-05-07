@@ -1,5 +1,5 @@
 // --- FIREBASE CONFIGURATION ---
-// Values will be replaced by GitHub Secrets during deployment or can be filled manually
+// Values will be replaced by GitHub Secrets during deployment or can be filled manually.
 const firebaseConfig = {
     apiKey: "AIzaSyCqqX-MlKAVot1maPYOztvG13ZUxfsRjgc",
     authDomain: "ptak-o-food.firebaseapp.com",
@@ -10,15 +10,12 @@ const firebaseConfig = {
     measurementId: "G-YJHBE6F3TX"
 };
 
-// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// --- 1. USTAWIENIE DATY ---
-const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-document.getElementById('current-date').innerText = new Date().toLocaleDateString('pl-PL', options);
+const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+document.getElementById('current-date').innerText = new Date().toLocaleDateString('pl-PL', dateOptions);
 
-// --- 2. STAN APLIKACJI (REALTIME) ---
 let dailyMenu = [];
 let restaurantName = "Ładowanie...";
 let orderLimit = "";
@@ -26,24 +23,20 @@ let orders = [];
 let history = [];
 let profiles = {};
 
-// --- 3. INICJALIZACJA APLIKACJI (LISTENERY REALTIME) ---
 function initApp() {
-    // 1. Słuchaj ustawień (Restauracja, Menu, Limit)
     db.collection("config").doc("current").onSnapshot((doc) => {
         if (doc.exists) {
             const data = doc.data();
             restaurantName = data.restaurantName || "Bistro pod Pijanym Ptakiem";
             dailyMenu = data.menu || [];
             orderLimit = data.orderLimit || "";
-            
+
             renderRestaurantName();
             renderMenu();
             renderAdminMenu();
             renderOrderLimitInfo();
-            // Przeładuj zamówienia bo ceny w menu mogły się zmienić
             renderOrders();
         } else {
-            // Inicjalizacja pustej konfiguracji jeśli nie istnieje
             db.collection("config").doc("current").set({
                 restaurantName: "Bistro pod Pijanym Ptakiem",
                 menu: [],
@@ -52,19 +45,16 @@ function initApp() {
         }
     });
 
-    // 2. Słuchaj zamówień
     db.collection("orders").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
         orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderOrders();
     });
 
-    // 3. Słuchaj historii (ostatnie 10 dni)
     db.collection("history").orderBy("timestamp", "desc").limit(10).onSnapshot((snapshot) => {
         history = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderHistory();
     });
 
-    // 4. Słuchaj szablonów
     db.collection("profiles").onSnapshot((snapshot) => {
         profiles = {};
         snapshot.docs.forEach(doc => {
@@ -74,17 +64,16 @@ function initApp() {
     });
 }
 
-// --- TABS LOGIC ---
 function switchTab(tabId) {
     if (tabId === 'admin-tab') {
         const isAdmin = localStorage.getItem('ptakIsAdmin') === 'true';
-        
+
         if (!isAdmin) {
             const pass = prompt("Podaj hasło administratora:");
             if (pass === "ptak123") {
                 localStorage.setItem('ptakIsAdmin', 'true');
             } else {
-                if (pass !== null) alert("❌ Błędne hasło!");
+                if (pass !== null) alert("Błędne hasło.");
                 return;
             }
         }
@@ -95,7 +84,7 @@ function switchTab(tabId) {
 
     const activeBtn = document.querySelector(`.tab-btn[onclick*="${tabId}"]`);
     if (activeBtn) activeBtn.classList.add('active');
-    
+
     const activeContent = document.getElementById(tabId);
     if (activeContent) activeContent.classList.add('active');
 
@@ -112,11 +101,10 @@ function logoutAdmin() {
     switchTab('orders-tab');
 }
 
-// --- 4. FUNKCJE ADMINISTRATORA ---
 function updateOrderLimit() {
     const limitInput = document.getElementById('admin-order-limit').value;
     db.collection("config").doc("current").update({ orderLimit: limitInput })
-        .then(() => alert("Zaktualizowano limit czasu!"))
+        .then(() => alert("Zaktualizowano limit czasu."))
         .catch(err => console.error("Error updating limit:", err));
 }
 
@@ -124,18 +112,14 @@ function renderOrderLimitInfo() {
     const infoContainer = document.getElementById('order-limit-display');
     if (!infoContainer) return;
 
-    if (orderLimit) {
-        infoContainer.innerHTML = `<br><strong>Zamówienia do godziny:</strong> <strong style="color: var(--secondary);">${orderLimit}</strong>`;
-    } else {
-        infoContainer.innerHTML = "";
-    }
+    infoContainer.innerText = orderLimit ? `Zamówienia do ${orderLimit}` : "";
 }
 
 function updateRestaurantName() {
     const newName = document.getElementById('admin-restaurant-name').value.trim();
     if (newName !== "") {
         db.collection("config").doc("current").update({ restaurantName: newName })
-            .then(() => alert("Zaktualizowano nazwę restauracji!"))
+            .then(() => alert("Zaktualizowano nazwę restauracji."))
             .catch(err => console.error("Error updating name:", err));
     }
 }
@@ -146,11 +130,11 @@ function renderRestaurantName() {
 
 function saveAsProfile() {
     if (dailyMenu.length === 0) {
-        alert("Menu jest puste! Dodaj najpierw dania.");
+        alert("Menu jest puste. Dodaj najpierw dania.");
         return;
     }
 
-    const profileName = prompt("Podaj nazwę dla tego szablonu (np. Nazwa Restauracji):", restaurantName);
+    const profileName = prompt("Podaj nazwę dla tego szablonu:", restaurantName);
     if (profileName) {
         db.collection("profiles").doc(profileName).set({
             name: restaurantName,
@@ -162,11 +146,11 @@ function saveAsProfile() {
 function loadProfile() {
     const profileName = document.getElementById('profile-select').value;
     if (!profileName) {
-        alert("Wybierz szablon z listy!");
+        alert("Wybierz szablon z listy.");
         return;
     }
 
-    if (confirm(`Czy chcesz wczytać szablon "${profileName}"? Obecne menu zostanie zastąpione.`)) {
+    if (confirm(`Wczytać szablon "${profileName}"? Obecne menu zostanie zastąpione.`)) {
         const profile = profiles[profileName];
         db.collection("config").doc("current").update({
             restaurantName: profile.name,
@@ -179,7 +163,7 @@ function deleteProfile() {
     const profileName = document.getElementById('profile-select').value;
     if (!profileName) return;
 
-    if (confirm(`Czy na pewno usunąć szablon "${profileName}"?`)) {
+    if (confirm(`Usunąć szablon "${profileName}"?`)) {
         db.collection("profiles").doc(profileName).delete()
             .then(() => alert("Usunięto szablon."));
     }
@@ -188,8 +172,8 @@ function deleteProfile() {
 function renderProfileList() {
     const select = document.getElementById('profile-select');
     if (!select) return;
-    select.innerHTML = '<option value="">-- Wybierz zapisany szablon --</option>';
-    
+    select.innerHTML = '<option value="">Wybierz zapisany szablon</option>';
+
     Object.keys(profiles).forEach(pName => {
         const opt = document.createElement('option');
         opt.value = pName;
@@ -203,7 +187,7 @@ function addMenuItem() {
     const priceInput = parseFloat(document.getElementById('admin-item-price').value);
 
     if (nameInput === "" || isNaN(priceInput)) {
-        alert("Podaj poprawną nazwę i cenę (np. 15.50).");
+        alert("Podaj poprawną nazwę i cenę, np. 25.50.");
         return;
     }
 
@@ -213,8 +197,7 @@ function addMenuItem() {
         price: priceInput
     };
 
-    const updatedMenu = [...dailyMenu, newItem];
-    db.collection("config").doc("current").update({ menu: updatedMenu })
+    db.collection("config").doc("current").update({ menu: [...dailyMenu, newItem] })
         .then(() => {
             document.getElementById('admin-item-name').value = "";
             document.getElementById('admin-item-price').value = "";
@@ -222,7 +205,7 @@ function addMenuItem() {
 }
 
 function deleteMenuItem(id) {
-    if(confirm("Usunąć tę pozycję z menu?")) {
+    if (confirm("Usunąć tę pozycję z menu?")) {
         const updatedMenu = dailyMenu.filter(item => item.id !== id);
         db.collection("config").doc("current").update({ menu: updatedMenu });
     }
@@ -233,45 +216,64 @@ function renderAdminMenu() {
     if (!adminMenuList) return;
     adminMenuList.innerHTML = "";
 
+    if (dailyMenu.length === 0) {
+        adminMenuList.innerHTML = '<li class="menu-item">Brak pozycji w menu.</li>';
+        return;
+    }
+
     dailyMenu.forEach(item => {
-        let li = document.createElement('li');
+        const li = document.createElement('li');
         li.className = 'menu-item';
-        li.innerHTML = `
-            <span>${item.name} - <span class="menu-price">${item.price.toFixed(2)} zł</span></span>
-            <button class="btn-danger btn-small" onclick="deleteMenuItem(${item.id})">Usuń</button>
-        `;
+
+        const label = document.createElement('span');
+        label.innerHTML = `${item.name} <span class="menu-price">${item.price.toFixed(2)} zł</span>`;
+
+        const button = document.createElement('button');
+        button.className = 'btn-danger btn-small';
+        button.innerText = 'Usuń';
+        button.onclick = () => deleteMenuItem(item.id);
+
+        li.append(label, button);
         adminMenuList.appendChild(li);
     });
 }
 
-// --- 5. FUNKCJE DLA ZWYKŁEGO UŻYTKOWNIKA ---
 function renderMenu() {
     const menuList = document.getElementById('menu-list');
-    
-    if (menuList) menuList.innerHTML = "";
+    if (!menuList) return;
+    menuList.innerHTML = "";
+
+    if (dailyMenu.length === 0) {
+        menuList.innerHTML = '<li class="menu-item">Menu nie jest jeszcze ustawione.</li>';
+        return;
+    }
 
     dailyMenu.forEach(item => {
-        if (menuList) {
-            let li = document.createElement('li');
-            li.className = 'menu-item clickable';
-            li.setAttribute('data-id', item.id);
-            li.onclick = () => selectMenuItem(item.id, item.name, item.price);
-            li.innerHTML = `${item.name} <span class="menu-price">${item.price.toFixed(2)} zł</span>`;
-            menuList.appendChild(li);
-        }
+        const li = document.createElement('li');
+        li.className = 'menu-item clickable';
+        li.setAttribute('data-id', item.id);
+        li.onclick = () => selectMenuItem(item.id, item.name, item.price);
+
+        const name = document.createElement('span');
+        name.innerText = item.name;
+
+        const price = document.createElement('span');
+        price.className = 'menu-price';
+        price.innerText = `${item.price.toFixed(2)} zł`;
+
+        li.append(name, price);
+        menuList.appendChild(li);
     });
 }
 
 function selectMenuItem(id, name, price) {
-    // UI Update
     document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('selected'));
     const selectedEl = document.querySelector(`.menu-item[data-id="${id}"]`);
     if (selectedEl) selectedEl.classList.add('selected');
 
-    // Form Update
     const display = document.getElementById('selected-item-display');
     const inputId = document.getElementById('item-select-id');
-    
+
     if (display && inputId) {
         display.innerText = `${name} (${price.toFixed(2)} zł)`;
         inputId.value = id;
@@ -284,7 +286,7 @@ function addOrder() {
     const noteInput = document.getElementById('order-note').value.trim();
 
     if (userNameInput === "" || isNaN(itemId)) {
-        alert("❗ Proszę wpisać swoje imię i wybrać danie z menu (klikając w nie).");
+        alert("Wpisz imię i kliknij danie z menu.");
         return;
     }
 
@@ -295,13 +297,17 @@ function addOrder() {
         limitDate.setHours(limitHours, limitMinutes, 0, 0);
 
         if (now > limitDate) {
-            alert(`❌ Przykro mi, ale czas na składanie zamówień minął o godzinie ${orderLimit}.`);
+            alert(`Czas na składanie zamówień minął o ${orderLimit}.`);
             return;
         }
     }
 
     const selectedItem = dailyMenu.find(m => m.id === itemId);
-    
+    if (!selectedItem) {
+        alert("Wybrane danie nie jest już dostępne.");
+        return;
+    }
+
     db.collection("orders").add({
         user: userNameInput,
         item: selectedItem,
@@ -309,12 +315,11 @@ function addOrder() {
         paid: false,
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
     }).then(() => {
-        // Reset form but keep name
         document.getElementById('item-select-id').value = "";
-        document.getElementById('selected-item-display').innerText = "Najpierw kliknij danie z menu";
+        document.getElementById('selected-item-display').innerText = "Kliknij danie z menu";
         document.getElementById('order-note').value = "";
         document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('selected'));
-        alert("Zamówienie dodane! Przejdź do 'Listy zamówień' aby je zobaczyć.");
+        switchTab('summary-tab');
     });
 }
 
@@ -326,13 +331,13 @@ function togglePaid(orderId) {
 }
 
 function deleteOrder(orderId) {
-    if(confirm("Usunąć to zamówienie?")) {
+    if (confirm("Usunąć to zamówienie?")) {
         db.collection("orders").doc(orderId).delete();
     }
 }
 
 async function clearAllOrders() {
-    if(confirm("Czy na pewno chcesz wyczyścić dzisiejszą listę BEZ zapisywania do historii?")) {
+    if (confirm("Wyczyścić dzisiejszą listę bez zapisywania do historii?")) {
         const snapshot = await db.collection("orders").get();
         const batch = db.batch();
         snapshot.docs.forEach(doc => batch.delete(doc.ref));
@@ -342,28 +347,27 @@ async function clearAllOrders() {
 
 async function archiveDay() {
     if (orders.length === 0) {
-        alert("Nie ma żadnych zamówień do zapisania!");
+        alert("Nie ma żadnych zamówień do zapisania.");
         return;
     }
 
-    if (confirm("Czy chcesz zakończyć dzień i zapisać zamówienia do historii?")) {
+    if (confirm("Zakończyć dzień i zapisać zamówienia do historii?")) {
         const total = document.getElementById('total-price-value').innerText;
-        
+
         await db.collection("history").add({
-            date: new Date().toLocaleDateString('pl-PL', options),
+            date: new Date().toLocaleDateString('pl-PL', dateOptions),
             restaurant: restaurantName,
             orders: orders,
             total: total,
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // Wyczyść zamówienia
         const snapshot = await db.collection("orders").get();
         const batch = db.batch();
         snapshot.docs.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
 
-        alert("Dzień zapisany w historii! 🎉");
+        alert("Dzień zapisany w historii.");
     }
 }
 
@@ -371,10 +375,17 @@ function renderOrders() {
     const tbody = document.getElementById('orders-body');
     const deliveryFeeInput = document.getElementById('delivery-fee');
     const deliveryCalcInfo = document.getElementById('delivery-calc-info');
-    
+    const ordersCount = document.getElementById('orders-count');
+
+    if (ordersCount) ordersCount.innerText = orders.length;
     if (!tbody) return;
+
     tbody.innerHTML = "";
     let itemsPrice = 0;
+
+    if (orders.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5">Brak zamówień. Pierwsze dodasz w zakładce Zamów.</td></tr>';
+    }
 
     const deliveryFeeTotal = parseFloat(deliveryFeeInput.value) || 0;
     const uniqueUsers = [...new Set(orders.map(o => o.user))].length;
@@ -389,9 +400,9 @@ function renderOrders() {
     const userDeliveryPaid = {};
 
     orders.forEach(order => {
-        let tr = document.createElement('tr');
+        const tr = document.createElement('tr');
         if (order.paid) tr.className = 'paid-row';
-        
+
         let orderDeliveryPart = 0;
         if (!userDeliveryPaid[order.user]) {
             orderDeliveryPart = deliveryPerPerson;
@@ -404,15 +415,15 @@ function renderOrders() {
             <td><strong>${order.user}</strong></td>
             <td>
                 ${order.item.name}
-                ${order.note ? `<span class="note-text">💬 ${order.note}</span>` : ""}
+                ${order.note ? `<span class="note-text">${order.note}</span>` : ""}
             </td>
             <td>${priceWithDelivery.toFixed(2)} zł</td>
             <td>
                 <input type="checkbox" ${order.paid ? 'checked' : ''} onchange="togglePaid('${order.id}')">
             </td>
-            <td><button class="btn-danger btn-small" onclick="deleteOrder('${order.id}')">❌</button></td>
+            <td><button class="btn-danger btn-small" onclick="deleteOrder('${order.id}')">Usuń</button></td>
         `;
-        
+
         tbody.appendChild(tr);
         itemsPrice += order.item.price;
     });
@@ -425,9 +436,9 @@ function renderOrders() {
 function renderHistory() {
     const historyList = document.getElementById('history-list');
     if (!historyList) return;
-    
+
     if (history.length === 0) {
-        historyList.innerHTML = '<p style="color: #636e72; font-style: italic;">Brak archiwalnych zamówień.</p>';
+        historyList.innerHTML = '<p class="note-text">Brak archiwalnych zamówień.</p>';
         return;
     }
 
@@ -435,34 +446,47 @@ function renderHistory() {
     history.forEach(entry => {
         const div = document.createElement('div');
         div.className = 'history-item';
-        
-        let ordersHtml = entry.orders.map(o => `
-            <li class="history-order-row">
-                <span><strong>${o.user}</strong>: ${o.item.name} ${o.note ? `(${o.note})` : ''}</span>
-                <button class="btn-small" onclick="reorder('${o.user}', ${o.item.id}, '${o.note || ''}')">Ponów 🔄</button>
-            </li>
-        `).join('');
 
-        div.innerHTML = `
-            <div class="history-header">
-                <span>📅 ${entry.date} - ${entry.restaurant}</span>
-                <span>Suma: ${entry.total} zł</span>
-            </div>
-            <ul class="history-orders">
-                ${ordersHtml}
-            </ul>
-        `;
+        const header = document.createElement('div');
+        header.className = 'history-header';
+        header.innerHTML = `<span>${entry.date} - ${entry.restaurant}</span><span>Suma: ${entry.total} zł</span>`;
+
+        const list = document.createElement('ul');
+        list.className = 'history-orders';
+
+        entry.orders.forEach(order => {
+            const li = document.createElement('li');
+            li.className = 'history-order-row';
+
+            const label = document.createElement('span');
+            label.innerHTML = `<strong>${order.user}</strong>: ${order.item.name} ${order.note ? `(${order.note})` : ''}`;
+
+            const button = document.createElement('button');
+            button.className = 'btn-small';
+            button.innerText = 'Ponów';
+            button.onclick = () => reorder(order.user, order.item.id, order.note || '');
+
+            li.append(label, button);
+            list.appendChild(li);
+        });
+
+        div.append(header, list);
         historyList.appendChild(div);
     });
 }
 
 function reorder(user, itemId, note) {
+    const item = dailyMenu.find(menuItem => menuItem.id === itemId);
     document.getElementById('user-name').value = user;
-    document.getElementById('item-select').value = itemId;
     document.getElementById('order-note').value = note;
     switchTab('orders-tab');
-    alert(`Uzupełniono formularz dla: ${user}. Kliknij 'Zamawiam!', aby potwierdzić.`);
+
+    if (item) {
+        selectMenuItem(item.id, item.name, item.price);
+    } else {
+        document.getElementById('item-select-id').value = "";
+        document.getElementById('selected-item-display').innerText = "Tego dania nie ma w dzisiejszym menu";
+    }
 }
 
-// --- 6. URUCHOMIENIE APLIKACJI NA STARCIE ---
 initApp();
