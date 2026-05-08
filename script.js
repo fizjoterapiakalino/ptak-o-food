@@ -26,6 +26,7 @@ let restaurants = [];
 let libraryItems = [];
 let composerSelectedIds = new Set();
 let menuMode = "fixed";
+let activeAdminPanel = "today";
 let parsedDailyMenu = [];
 let fixedMenuDraft = [];
 let fixedMenuDraftSaved = false;
@@ -33,6 +34,10 @@ let savedFixedMenuRestaurantId = "";
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "ptak123";
 const USER_NAME_STORAGE_KEY = "ptakUserName";
+const ADMIN_PANEL_STORAGE_KEY = "ptakAdminPanel";
+const AUTO_ARCHIVE_HOUR = 18;
+const HISTORY_RETENTION_DAYS = 7;
+let autoArchiveCheckInProgress = false;
 
 function showToast(message, type = "info") {
     const container = document.getElementById('toast-container');
@@ -217,6 +222,17 @@ function getAdminRestaurantName() {
     return document.getElementById('admin-restaurant-name')?.value.trim() || restaurantName;
 }
 
+function getFixedMenuEditorRestaurantName() {
+    return document.getElementById('fixed-menu-restaurant-name')?.value.trim() || getAdminRestaurantName();
+}
+
+function getArchiveDateKey(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 function getSavedFixedMenuRestaurants() {
     return restaurants
         .filter(restaurant => Array.isArray(restaurant.fixedMenu) && restaurant.fixedMenu.length > 0)
@@ -342,6 +358,7 @@ function initApp() {
     db.collection("orders").orderBy("timestamp", "asc").onSnapshot((snapshot) => {
         orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderOrders();
+        maybeAutoArchiveOrders();
     });
 
     db.collection("history").orderBy("timestamp", "desc").limit(10).onSnapshot((snapshot) => {
@@ -349,6 +366,8 @@ function initApp() {
         renderHistory();
         renderRestaurantSuggestions();
     });
+
+    pruneOldHistoryEntries();
 
     db.collection("profiles").onSnapshot((snapshot) => {
         profiles = {};
@@ -400,7 +419,42 @@ function switchTab(tabId) {
         renderAdminMenu();
         renderMenuDayPreview();
         renderFixedMenuControls();
+        renderAdminMenuStatus();
+        switchAdminPanel(activeAdminPanel);
         updateAdminUI();
+    }
+}
+
+function switchAdminPanel(panelId) {
+    const validPanel = ["today", "fixed"].includes(panelId) ? panelId : "today";
+    activeAdminPanel = validPanel;
+    localStorage.setItem(ADMIN_PANEL_STORAGE_KEY, validPanel);
+
+    if (validPanel === "fixed") {
+        const editorNameInput = document.getElementById('fixed-menu-restaurant-name');
+        if (editorNameInput && !editorNameInput.value.trim()) {
+            editorNameInput.value = getAdminRestaurantName();
+        }
+    }
+
+    document.querySelectorAll('.admin-workflow-tab').forEach(button => {
+        button.classList.toggle('active', button.dataset.adminPanel === validPanel);
+    });
+
+    document.querySelectorAll('.admin-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === `admin-panel-${validPanel}`);
+    });
+
+    renderMenuMode();
+    renderMenuDayPreview();
+    renderFixedMenuControls();
+    renderAdminMenuStatus();
+}
+
+function initAdminPanelPreference() {
+    const savedPanel = localStorage.getItem(ADMIN_PANEL_STORAGE_KEY);
+    if (["today", "fixed"].includes(savedPanel)) {
+        activeAdminPanel = savedPanel;
     }
 }
 
@@ -742,24 +796,40 @@ function markFixedMenuDraftUnsaved() {
 }
 
 function renderSavedFixedMenuList() {
-    const select = document.getElementById('saved-fixed-menu-select');
-    if (!select) return;
+    const selects = [
+        document.getElementById('saved-fixed-menu-select'),
+        document.getElementById('fixed-editor-menu-select')
+    ].filter(Boolean);
+    if (selects.length === 0) return;
 
-    const currentValue = select.value;
+    const currentValue = selects.find(select => select.value)?.value || "";
     const fixedMenus = getSavedFixedMenuRestaurants();
 
-    select.innerHTML = '<option value="">Wybierz zapisane menu</option>';
-    fixedMenus.forEach(restaurant => {
-        const option = document.createElement('option');
-        option.value = restaurant.id;
-        option.innerText = restaurant.name;
-        select.appendChild(option);
+    selects.forEach(select => {
+        select.innerHTML = '<option value="">Wybierz zapisane menu</option>';
+        fixedMenus.forEach(restaurant => {
+            const option = document.createElement('option');
+            option.value = restaurant.id;
+            option.innerText = restaurant.name;
+            select.appendChild(option);
+        });
+
+        select.value = fixedMenus.some(restaurant => restaurant.id === currentValue)
+            ? currentValue
+            : "";
     });
 
-    select.value = fixedMenus.some(restaurant => restaurant.id === currentValue)
-        ? currentValue
-        : "";
     renderFixedMenuControls();
+}
+
+function syncSavedFixedMenuSelects(sourceId) {
+    const source = document.getElementById(sourceId);
+    if (!source) return;
+
+    ['saved-fixed-menu-select', 'fixed-editor-menu-select'].forEach(selectId => {
+        const select = document.getElementById(selectId);
+        if (select && select !== source) select.value = source.value;
+    });
 }
 
 function renderFixedMenuControls() {
@@ -768,7 +838,9 @@ function renderFixedMenuControls() {
     const loadButton = document.getElementById('load-fixed-menu-button');
     const deleteButton = document.getElementById('delete-fixed-menu-button');
     const savedSelect = document.getElementById('saved-fixed-menu-select');
+    const editorSelect = document.getElementById('fixed-editor-menu-select');
     const fixedInput = document.getElementById('fixed-menu-input');
+    const selectedFixedMenuId = savedSelect?.value || editorSelect?.value || "";
 
     if (publishButton) {
         const publishDisabled = menuMode === "fixed" && !isFixedMenuReadyToPublish();
@@ -778,16 +850,49 @@ function renderFixedMenuControls() {
 
     if (saveButton) {
         const hasDraftSource = fixedMenuDraft.length > 0 || Boolean(fixedInput?.value.trim());
-        saveButton.disabled = menuMode === "fixed" && !hasDraftSource;
+        saveButton.disabled = !hasDraftSource;
     }
 
     if (loadButton) {
-        loadButton.disabled = !savedSelect?.value;
+        loadButton.disabled = !selectedFixedMenuId;
     }
 
     if (deleteButton) {
-        deleteButton.disabled = !savedSelect?.value;
+        deleteButton.disabled = !selectedFixedMenuId;
     }
+
+    renderAdminMenuStatus();
+}
+
+function renderAdminMenuStatus() {
+    const status = document.getElementById('admin-menu-status');
+    if (!status) return;
+
+    const itemCount = menuMode === "daily" ? parsedDailyMenu.length : fixedMenuDraft.length;
+    let text = "";
+    let state = "info";
+
+    if (menuMode === "daily") {
+        if (itemCount === 0) {
+            text = "Menu dzienne nie jest jeszcze przetworzone.";
+            state = "warning";
+        } else {
+            text = `Menu dzienne gotowe do publikacji · ${itemCount} pozycji.`;
+            state = "success";
+        }
+    } else if (itemCount === 0) {
+        text = "Stałe menu nie jest jeszcze wczytane ani przetworzone.";
+        state = "warning";
+    } else if (!isFixedMenuReadyToPublish()) {
+        text = `Stałe menu zmienione · ${itemCount} pozycji · zapisz przed publikacją.`;
+        state = "warning";
+    } else {
+        text = `Stałe menu zapisane · ${itemCount} pozycji · gotowe do publikacji.`;
+        state = "success";
+    }
+
+    status.innerText = text;
+    status.className = `admin-menu-status status-${state}`;
 }
 
 function importCurrentMenuToLibrary() {
@@ -830,6 +935,7 @@ function setMenuMode(mode) {
     renderMenuMode();
     renderMenuDayPreview();
     renderFixedMenuControls();
+    renderAdminMenuStatus();
 }
 
 function renderMenuMode() {
@@ -837,15 +943,16 @@ function renderMenuMode() {
         input.checked = input.value === menuMode;
     });
 
-    document.querySelectorAll('.fixed-menu-panel').forEach(panel => {
+    document.querySelectorAll('.fixed-source-panel').forEach(panel => {
         panel.classList.toggle('is-hidden', menuMode !== "fixed");
     });
 
-    document.querySelectorAll('.daily-menu-panel').forEach(panel => {
+    document.querySelectorAll('.daily-source-panel').forEach(panel => {
         panel.classList.toggle('is-hidden', menuMode !== "daily");
     });
 
     renderFixedMenuControls();
+    renderAdminMenuStatus();
 }
 
 function parseDailyMenuLine(line, category) {
@@ -984,9 +1091,7 @@ function parseFixedMenu(silent = false) {
 }
 
 function saveFixedMenu() {
-    if (menuMode !== "fixed") return;
-
-    const name = getAdminRestaurantName();
+    const name = getFixedMenuEditorRestaurantName();
     const limitInput = document.getElementById('admin-order-limit')?.value || orderLimit;
 
     if (!name) {
@@ -1008,9 +1113,12 @@ function saveFixedMenu() {
         lastOrderLimit: limitInput
     })
         .then(() => {
+            const savedRestaurant = restaurants.find(restaurant => restaurant.name === name);
             fixedMenuDraft = selectedItems;
             fixedMenuDraftSaved = true;
-            savedFixedMenuRestaurantId = getCurrentFixedMenuRestaurantId();
+            savedFixedMenuRestaurantId = savedRestaurant?.id || restaurantDocId(name);
+            const editorNameInput = document.getElementById('fixed-menu-restaurant-name');
+            if (editorNameInput) editorNameInput.value = name;
             renderSavedFixedMenuList();
             renderMenuDayPreview();
             renderFixedMenuControls();
@@ -1019,8 +1127,8 @@ function saveFixedMenu() {
         .catch(err => console.error("Error saving fixed menu:", err));
 }
 
-function loadSelectedFixedMenu() {
-    const select = document.getElementById('saved-fixed-menu-select');
+function loadSelectedFixedMenu(sourceId = "saved-fixed-menu-select") {
+    const select = document.getElementById(sourceId);
     const selectedRestaurant = restaurants.find(restaurant => restaurant.id === select?.value);
 
     if (!selectedRestaurant?.fixedMenu?.length) {
@@ -1029,6 +1137,7 @@ function loadSelectedFixedMenu() {
     }
 
     const restaurantInput = document.getElementById('admin-restaurant-name');
+    const editorNameInput = document.getElementById('fixed-menu-restaurant-name');
     const limitInput = document.getElementById('admin-order-limit');
     const fixedInput = document.getElementById('fixed-menu-input');
 
@@ -1038,6 +1147,7 @@ function loadSelectedFixedMenu() {
     savedFixedMenuRestaurantId = selectedRestaurant.id;
 
     if (restaurantInput) restaurantInput.value = selectedRestaurant.name;
+    if (editorNameInput) editorNameInput.value = selectedRestaurant.name;
     if (selectedRestaurant.lastOrderLimit && limitInput) limitInput.value = selectedRestaurant.lastOrderLimit;
     if (fixedInput) {
         fixedInput.value = selectedRestaurant.fixedMenu
@@ -1045,14 +1155,15 @@ function loadSelectedFixedMenu() {
             .join('\n');
     }
 
+    syncSavedFixedMenuSelects(select.id);
     renderMenuMode();
     renderMenuDayPreview();
     renderFixedMenuControls();
     showToast("Wczytano stałe menu do kompozytora.", "success");
 }
 
-function deleteSelectedFixedMenu() {
-    const select = document.getElementById('saved-fixed-menu-select');
+function deleteSelectedFixedMenu(sourceId = "saved-fixed-menu-select") {
+    const select = document.getElementById(sourceId);
     const selectedRestaurant = restaurants.find(restaurant => restaurant.id === select?.value);
 
     if (!selectedRestaurant?.fixedMenu?.length) {
@@ -1101,6 +1212,7 @@ function renderMenuDayPreview() {
         preview.innerHTML = menuMode === "daily"
             ? '<p class="note-text">Wklej menu i kliknij Przetwórz menu.</p>'
             : '<p class="note-text">Wklej stałe menu i kliknij Przetwórz menu.</p>';
+        renderAdminMenuStatus();
         return;
     }
 
@@ -1127,6 +1239,7 @@ function renderMenuDayPreview() {
             </ul>
         </div>
     `).join('');
+    renderAdminMenuStatus();
 }
 
 function publishComposedMenu() {
@@ -1302,7 +1415,13 @@ function addOrder() {
 function togglePaid(orderId) {
     const order = orders.find(o => o.id === orderId);
     if (order) {
-        db.collection("orders").doc(orderId).update({ paid: !order.paid });
+        const nextPaid = !order.paid;
+        db.collection("orders").doc(orderId).update({ paid: nextPaid })
+            .then(() => showToast(nextPaid ? "Oznaczono zamówienie jako opłacone." : "Odznaczono płatność zamówienia.", "success"))
+            .catch(err => {
+                console.error("Error toggling paid state:", err);
+                showToast("Nie udało się zmienić statusu płatności.", "error");
+            });
     }
 }
 
@@ -1313,7 +1432,38 @@ function deleteOrder(orderId) {
     }
 
     if (confirm("Usunąć to zamówienie?")) {
-        db.collection("orders").doc(orderId).delete();
+        db.collection("orders").doc(orderId).delete()
+            .then(() => showToast("Usunięto zamówienie z listy.", "success"))
+            .catch(err => {
+                console.error("Error deleting order:", err);
+                showToast("Nie udało się usunąć zamówienia.", "error");
+            });
+    }
+}
+
+async function markAllOrdersPaid(paid) {
+    if (!isAdminLoggedIn()) {
+        showToast("Tylko administrator może zmieniać płatności zbiorczo.", "error");
+        return;
+    }
+
+    const ordersToUpdate = orders.filter(order => Boolean(order.paid) !== paid);
+    if (ordersToUpdate.length === 0) {
+        showToast(paid ? "Wszystkie zamówienia są już opłacone." : "Nie ma opłaconych zamówień do odznaczenia.", "info");
+        return;
+    }
+
+    const batch = db.batch();
+    ordersToUpdate.forEach(order => {
+        batch.update(db.collection("orders").doc(order.id), { paid });
+    });
+
+    try {
+        await batch.commit();
+        showToast(paid ? "Oznaczono wszystkie zamówienia jako opłacone." : "Odznaczono wszystkie płatności.", "success");
+    } catch (err) {
+        console.error("Error updating paid states:", err);
+        showToast("Nie udało się zbiorczo zmienić płatności.", "error");
     }
 }
 
@@ -1323,12 +1473,72 @@ async function clearAllOrders() {
         return;
     }
 
+    if (orders.length === 0) {
+        showToast("Lista zamówień jest już pusta.", "info");
+        return;
+    }
+
     if (confirm("Wyczyścić dzisiejszą listę bez zapisywania do historii?")) {
         const snapshot = await db.collection("orders").get();
         const batch = db.batch();
         snapshot.docs.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
+        showToast("Wyczyszczono dzisiejszą listę zamówień.", "success");
     }
+}
+
+async function archiveCurrentOrders({ automatic = false } = {}) {
+    const archiveDateKey = getArchiveDateKey();
+
+    if (orders.length === 0) {
+        if (!automatic) showToast("Nie ma żadnych zamówień do zapisania.", "info");
+        return false;
+    }
+
+    const configRef = db.collection("config").doc("current");
+    const canArchive = await db.runTransaction(async transaction => {
+        const configDoc = await transaction.get(configRef);
+        const data = configDoc.exists ? configDoc.data() : {};
+
+        if (automatic && data.lastAutoArchiveDate === archiveDateKey) {
+            return false;
+        }
+
+        transaction.set(configRef, {
+            lastAutoArchiveDate: archiveDateKey,
+            lastArchiveAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        return true;
+    });
+
+    if (!canArchive) return false;
+
+    const financials = getOrderFinancialRows();
+    const ordersSnapshot = await db.collection("orders").get();
+
+    if (ordersSnapshot.empty) {
+        return false;
+    }
+
+    await db.collection("history").add({
+        date: new Date().toLocaleDateString('pl-PL', dateOptions),
+        archiveDate: archiveDateKey,
+        restaurant: restaurantName,
+        orders: ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+        total: financials.finalTotal.toFixed(2),
+        remainingTotal: financials.remainingTotal.toFixed(2),
+        paidTotal: financials.paidTotal.toFixed(2),
+        autoArchived: automatic,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    const batch = db.batch();
+    ordersSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+    await pruneOldHistoryEntries();
+
+    showToast(automatic ? "Zamówienia zostały automatycznie zarchiwizowane o 18:00." : "Dzień zapisany w historii.", "success");
+    return true;
 }
 
 async function archiveDay() {
@@ -1342,24 +1552,118 @@ async function archiveDay() {
         return;
     }
 
-    if (confirm("Zakończyć dzień i zapisać zamówienia do historii?")) {
-        const total = document.getElementById('total-price-value').innerText;
+    if (!confirm("Zarchiwizować dzisiejsze zamówienia? Nie muszą być wszystkie opłacone.")) return;
 
-        await db.collection("history").add({
-            date: new Date().toLocaleDateString('pl-PL', dateOptions),
-            restaurant: restaurantName,
-            orders: orders,
-            total: total,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
+    try {
+        await archiveCurrentOrders({ automatic: false });
+    } catch (err) {
+        console.error("Error archiving day:", err);
+        showToast("Nie udało się zarchiwizować dnia.", "error");
+    }
+}
 
-        const snapshot = await db.collection("orders").get();
+async function maybeAutoArchiveOrders() {
+    const now = new Date();
+    if (!isAdminLoggedIn() || now.getHours() < AUTO_ARCHIVE_HOUR || autoArchiveCheckInProgress || orders.length === 0) return;
+
+    autoArchiveCheckInProgress = true;
+    try {
+        await archiveCurrentOrders({ automatic: true });
+    } catch (err) {
+        console.error("Error auto-archiving orders:", err);
+    } finally {
+        autoArchiveCheckInProgress = false;
+    }
+}
+
+async function pruneOldHistoryEntries() {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - HISTORY_RETENTION_DAYS);
+
+    try {
+        const snapshot = await db.collection("history")
+            .where("timestamp", "<", firebase.firestore.Timestamp.fromDate(cutoff))
+            .get();
+
+        if (snapshot.empty) return;
+
         const batch = db.batch();
         snapshot.docs.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
-
-        showToast("Dzień zapisany w historii.", "success");
+    } catch (err) {
+        console.error("Error pruning old history entries:", err);
     }
+}
+
+function getOrderFinancialRows() {
+    const deliveryFeeInput = document.getElementById('delivery-fee');
+    const deliveryFeeTotal = parseFloat(deliveryFeeInput?.value) || 0;
+    const uniqueUsers = [...new Set(orders.map(order => order.user))].length;
+    const deliveryPerPerson = uniqueUsers > 0 ? (deliveryFeeTotal / uniqueUsers) : 0;
+    const userDeliveryApplied = {};
+
+    const rows = orders.map(order => {
+        let deliveryPart = 0;
+        if (!userDeliveryApplied[order.user]) {
+            deliveryPart = deliveryPerPerson;
+            userDeliveryApplied[order.user] = true;
+        }
+
+        const itemPrice = Number(order.item?.price) || 0;
+        return {
+            order,
+            itemPrice,
+            deliveryPart,
+            priceWithDelivery: itemPrice + deliveryPart
+        };
+    });
+
+    const itemsTotal = rows.reduce((sum, row) => sum + row.itemPrice, 0);
+    const finalTotal = itemsTotal + deliveryFeeTotal;
+    const paidTotal = rows.reduce((sum, row) => row.order.paid ? sum + row.priceWithDelivery : sum, 0);
+    const remainingTotal = rows.reduce((sum, row) => row.order.paid ? sum : sum + row.priceWithDelivery, 0);
+
+    return {
+        rows,
+        deliveryFeeTotal,
+        uniqueUsers,
+        deliveryPerPerson,
+        finalTotal,
+        paidTotal,
+        remainingTotal
+    };
+}
+
+function copyOrdersSummary() {
+    if (orders.length === 0) {
+        showToast("Nie ma zamówień do skopiowania.", "info");
+        return;
+    }
+
+    const financials = getOrderFinancialRows();
+    const lines = [
+        `Zamówienia - ${restaurantName}`,
+        ...financials.rows.map(({ order, priceWithDelivery }) => {
+            const status = order.paid ? "opłacone" : "do zapłaty";
+            const note = order.note ? ` (${order.note})` : "";
+            return `${order.user}: ${order.item.name}${note} - ${priceWithDelivery.toFixed(2)} zł [${status}]`;
+        }),
+        `Do zapłaty: ${financials.remainingTotal.toFixed(2)} zł`,
+        `Zapłacono: ${financials.paidTotal.toFixed(2)} zł`,
+        `Suma: ${financials.finalTotal.toFixed(2)} zł`
+    ];
+
+    if (!navigator.clipboard) {
+        showToast("Kopiowanie nie jest dostępne w tej przeglądarce.", "error");
+        return;
+    }
+
+    navigator.clipboard.writeText(lines.join('\n'))
+        .then(() => showToast("Skopiowano listę zamówień.", "success"))
+        .catch(err => {
+            console.error("Error copying orders summary:", err);
+            showToast("Nie udało się skopiować listy.", "error");
+        });
 }
 
 function deleteHistoryEntry(historyId) {
@@ -1397,49 +1701,57 @@ async function clearHistory() {
 
 function renderOrders() {
     const tbody = document.getElementById('orders-body');
-    const deliveryFeeInput = document.getElementById('delivery-fee');
     const deliveryCalcInfo = document.getElementById('delivery-calc-info');
     const ordersCount = document.getElementById('orders-count');
+    const summaryCards = document.getElementById('orders-summary-cards');
 
     if (ordersCount) ordersCount.innerText = orders.length;
     if (!tbody) return;
 
     tbody.innerHTML = "";
-    let itemsPrice = 0;
+    const financials = getOrderFinancialRows();
 
     if (orders.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5">Brak zamówień. Pierwsze dodasz w zakładce Zamów.</td></tr>';
     }
 
-    const deliveryFeeTotal = parseFloat(deliveryFeeInput.value) || 0;
-    const uniqueUsers = [...new Set(orders.map(o => o.user))].length;
-    const deliveryPerPerson = uniqueUsers > 0 ? (deliveryFeeTotal / uniqueUsers) : 0;
-
-    if (deliveryFeeTotal > 0) {
-        deliveryCalcInfo.innerText = `Dostawa: ${deliveryFeeTotal.toFixed(2)} zł / ${uniqueUsers} os. = +${deliveryPerPerson.toFixed(2)} zł/os.`;
+    if (financials.deliveryFeeTotal > 0) {
+        deliveryCalcInfo.innerText = `Dostawa: ${financials.deliveryFeeTotal.toFixed(2)} zł / ${financials.uniqueUsers} os. = +${financials.deliveryPerPerson.toFixed(2)} zł/os.`;
     } else {
         deliveryCalcInfo.innerText = "";
     }
 
-    const userDeliveryPaid = {};
+    if (summaryCards) {
+        summaryCards.innerHTML = `
+            <div class="orders-summary-card">
+                <span>Zamówienia</span>
+                <strong>${orders.length}</strong>
+            </div>
+            <div class="orders-summary-card">
+                <span>Do zapłaty</span>
+                <strong>${financials.remainingTotal.toFixed(2)} zł</strong>
+            </div>
+            <div class="orders-summary-card">
+                <span>Zapłacono</span>
+                <strong>${financials.paidTotal.toFixed(2)} zł</strong>
+            </div>
+            <div class="orders-summary-card">
+                <span>Suma</span>
+                <strong>${financials.finalTotal.toFixed(2)} zł</strong>
+            </div>
+        `;
+    }
 
-    orders.forEach(order => {
+    financials.rows.forEach(({ order, deliveryPart, priceWithDelivery }) => {
         const tr = document.createElement('tr');
         if (order.paid) tr.className = 'paid-row';
 
-        let orderDeliveryPart = 0;
-        if (!userDeliveryPaid[order.user]) {
-            orderDeliveryPart = deliveryPerPerson;
-            userDeliveryPaid[order.user] = true;
-        }
-
-        const priceWithDelivery = order.item.price + orderDeliveryPart;
-
         tr.innerHTML = `
-            <td data-label="Kto"><strong>${order.user}</strong></td>
+            <td data-label="Kto"><strong>${escapeHtml(order.user)}</strong></td>
             <td data-label="Co">
-                ${order.item.name}
-                ${order.note ? `<span class="note-text">${order.note}</span>` : ""}
+                ${escapeHtml(order.item.name)}
+                ${deliveryPart > 0 ? `<span class="note-text">Dostawa: +${deliveryPart.toFixed(2)} zł</span>` : ""}
+                ${order.note ? `<span class="note-text">${escapeHtml(order.note)}</span>` : ""}
             </td>
             <td data-label="Cena">${priceWithDelivery.toFixed(2)} zł</td>
             <td data-label="Zapł.">
@@ -1449,12 +1761,12 @@ function renderOrders() {
         `;
 
         tbody.appendChild(tr);
-        itemsPrice += order.item.price;
     });
 
-    const finalTotal = itemsPrice + deliveryFeeTotal;
     const totalPriceElement = document.getElementById('total-price-value');
-    if (totalPriceElement) totalPriceElement.innerText = finalTotal.toFixed(2);
+    const remainingPriceElement = document.getElementById('remaining-price-value');
+    if (totalPriceElement) totalPriceElement.innerText = financials.finalTotal.toFixed(2);
+    if (remainingPriceElement) remainingPriceElement.innerText = financials.remainingTotal.toFixed(2);
 }
 
 function renderHistory() {
@@ -1518,6 +1830,7 @@ function reorder(user, itemId, note) {
 }
 
 initRememberedUserName();
+initAdminPanelPreference();
 initApp();
 updateAdminUI();
 
@@ -1526,4 +1839,5 @@ setInterval(() => {
     renderDaySummary();
     renderMenu();
     updateOrderAvailability();
+    maybeAutoArchiveOrders();
 }, 30000);
