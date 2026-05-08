@@ -30,6 +30,7 @@
                 <div>
                     <p class="date-line" id="current-date"></p>
                     <h2 id="restaurant-name">Ładowanie...</h2>
+                    <div class="today-order-info" id="today-order-info"></div>
                     <p>Wpisz imię, wybierz danie i potwierdź. Bez przeklikiwania koszyka.</p>
                 </div>
                 <div class="order-count">
@@ -43,7 +44,7 @@
                     <div class="section-heading">
                         <div>
                             <p class="eyebrow">Dzisiejsze menu</p>
-                            <h3>Wybierz danie</h3>
+                            <h3>Co do dzioba?</h3>
                         </div>
                     </div>
                     <ul class="menu-list" id="menu-list"></ul>
@@ -65,11 +66,12 @@
                     <label>Wybrane danie</label>
                     <div id="selected-item-display" class="selection-info">Kliknij danie z menu</div>
                     <input type="hidden" id="item-select-id" value="">
+                    <div id="order-preview" class="order-preview is-hidden"></div>
 
                     <label for="order-note">Uwagi</label>
                     <input type="text" id="order-note" placeholder="np. bez cebuli">
 
-                    <button class="primary-action" onclick="addOrder()">Zamawiam</button>
+                    <button class="primary-action" id="submit-order-btn" onclick="addOrder()">Zamawiam</button>
                 </aside>
             </div>
         </section>
@@ -81,7 +83,7 @@
                         <p class="eyebrow">Aktualnie</p>
                         <h3>Lista zamówień</h3>
                     </div>
-                    <div class="action-row">
+                    <div class="action-row admin-only is-hidden">
                         <button class="btn-success" onclick="archiveDay()">Zakończ dzień</button>
                         <button class="btn-warning" onclick="clearAllOrders()">Reset</button>
                     </div>
@@ -116,8 +118,13 @@
 
         <section id="history-tab" class="tab-content">
             <div class="section history-section">
-                <p class="eyebrow">Archiwum</p>
-                <h3>Historia zamówień</h3>
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Archiwum</p>
+                        <h3>Historia zamówień</h3>
+                    </div>
+                    <button class="btn-danger admin-only is-hidden" onclick="clearHistory()">Wyczyść historię</button>
+                </div>
                 <div id="history-list"></div>
             </div>
         </section>
@@ -128,48 +135,118 @@
                     <div>
                         <p class="eyebrow">Ustawienia</p>
                         <h3>Panel administratora</h3>
+                        <div id="admin-status" class="admin-status is-hidden">Admin aktywny</div>
                     </div>
-                    <button class="btn-danger btn-small" onclick="logoutAdmin()">Wyloguj</button>
+                    <button class="btn-danger btn-small admin-only is-hidden" onclick="logoutAdmin()">Wyloguj</button>
                 </div>
 
-                <div class="form-group">
-                    <label for="admin-restaurant-name">Skąd jemy?</label>
-                    <input type="text" id="admin-restaurant-name" placeholder="Nazwa restauracji">
-                    <button class="btn-success" onclick="updateRestaurantName()">Zapisz</button>
+                <form class="admin-login" id="admin-login-form" onsubmit="loginAdmin(event)">
+                    <label for="admin-username">Użytkownik</label>
+                    <input type="text" id="admin-username" placeholder="admin" autocomplete="username">
+                    <label for="admin-password">Hasło administratora</label>
+                    <input type="password" id="admin-password" placeholder="Hasło" autocomplete="current-password">
+                    <label class="checkbox-row">
+                        <input type="checkbox" id="remember-admin">
+                        <span>Zapamiętaj użytkownika</span>
+                    </label>
+                    <button class="btn-success" type="submit">Zaloguj</button>
+                </form>
+
+                <div id="admin-controls" class="admin-controls admin-only is-hidden">
+                    <div class="day-settings-panel">
+                        <p class="eyebrow">Dzisiejsze zamówienie</p>
+                        <div class="form-group">
+                            <label for="admin-restaurant-name">Skąd jemy?</label>
+                            <input type="text" id="admin-restaurant-name" placeholder="Nazwa restauracji" list="restaurant-suggestions">
+                            <datalist id="restaurant-suggestions"></datalist>
+                            <select id="restaurant-quick-select" onchange="applyRestaurantSelection(this.value)">
+                                <option value="">Wybierz z ostatnich restauracji</option>
+                            </select>
+                            <label for="admin-order-limit">Zamówienia do</label>
+                            <input type="time" id="admin-order-limit">
+                            <button class="btn-success" onclick="updateDaySettings()">Zapisz restaurację</button>
+                        </div>
+                        <div id="admin-day-summary" class="admin-day-summary"></div>
+                    </div>
+
+                    <hr>
+
+                    <div class="menu-mode-panel">
+                        <p class="eyebrow">Typ menu</p>
+                        <div class="segmented-control" role="group" aria-label="Typ menu">
+                            <label>
+                                <input type="radio" name="menu-mode" value="fixed" checked onchange="setMenuMode('fixed')">
+                                <span>Stałe menu</span>
+                            </label>
+                            <label>
+                                <input type="radio" name="menu-mode" value="daily" onchange="setMenuMode('daily')">
+                                <span>Menu dzienne</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="composer-grid">
+                        <section class="composer-panel fixed-menu-panel">
+                            <div class="section-heading compact-heading">
+                                <div>
+                                    <p class="eyebrow">Biblioteka dań</p>
+                                    <h3>Pozycje restauracji</h3>
+                                </div>
+                                <div class="action-row">
+                                    <button class="btn-warning btn-small" onclick="importCurrentMenuToLibrary()">Zapisz obecne w bibliotece</button>
+                                    <button class="btn-warning btn-small" onclick="selectCurrentMenuFromLibrary()">Wczytaj obecne</button>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <input type="text" id="admin-item-name" placeholder="Nazwa dania">
+                                <input type="number" id="admin-item-price" placeholder="Cena" step="0.01">
+                                <input type="text" id="admin-item-category" placeholder="Kategoria">
+                                <button class="btn-success" onclick="addMenuItem()">Dodaj do biblioteki</button>
+                            </div>
+
+                            <div class="form-group">
+                                <input type="search" id="library-search" placeholder="Szukaj w bibliotece" oninput="renderAdminMenu()">
+                                <select id="category-filter" onchange="renderAdminMenu()">
+                                    <option value="">Wszystkie kategorie</option>
+                                </select>
+                            </div>
+
+                            <ul class="library-list" id="admin-menu-list"></ul>
+                        </section>
+
+                        <section class="composer-panel daily-menu-panel is-hidden">
+                            <div class="section-heading compact-heading">
+                                <div>
+                                    <p class="eyebrow">Szybkie menu</p>
+                                    <h3>Wklej menu z cenami</h3>
+                                </div>
+                            </div>
+                            <textarea id="daily-menu-input" class="daily-menu-input" placeholder="Schabowy z ziemniakami - 28&#10;Pierogi ruskie 24 zł&#10;Zupa pomidorowa: 12,50"></textarea>
+                            <div class="form-group">
+                                <input type="text" id="daily-menu-category" placeholder="Kategoria" value="Menu dnia">
+                                <button class="btn-success" onclick="parseDailyMenu()">Przetwórz menu</button>
+                            </div>
+                            <div id="daily-menu-errors" class="daily-menu-errors is-hidden"></div>
+                        </section>
+
+                        <section class="composer-panel menu-day-panel">
+                            <div class="section-heading compact-heading">
+                                <div>
+                                    <p class="eyebrow">Menu dnia</p>
+                                    <h3>Wybrane do zamówień</h3>
+                                </div>
+                            </div>
+                            <div id="menu-day-preview" class="menu-day-preview"></div>
+                            <button class="btn-success full-width" onclick="publishComposedMenu()">Opublikuj menu</button>
+                            <button class="btn-warning full-width" onclick="clearComposedMenu()">Wyczyść wybór</button>
+                        </section>
+                    </div>
                 </div>
-
-                <div class="form-group">
-                    <label for="admin-order-limit">Zamówienia do</label>
-                    <input type="time" id="admin-order-limit">
-                    <button class="btn-success" onclick="updateOrderLimit()">Zapisz</button>
-                </div>
-
-                <hr>
-
-                <h3>Szablony restauracji</h3>
-                <div class="form-group">
-                    <select id="profile-select">
-                        <option value="">Wybierz zapisany szablon</option>
-                    </select>
-                    <button class="btn-warning" onclick="loadProfile()">Wczytaj</button>
-                    <button class="btn-danger" onclick="deleteProfile()">Usuń</button>
-                </div>
-                <button class="btn-success full-width" onclick="saveAsProfile()">Zapisz obecne menu jako szablon</button>
-
-                <hr>
-
-                <h3>Dodaj pozycję do menu</h3>
-                <div class="form-group">
-                    <input type="text" id="admin-item-name" placeholder="Nazwa dania">
-                    <input type="number" id="admin-item-price" placeholder="Cena" step="0.01">
-                    <button class="btn-success" onclick="addMenuItem()">Dodaj</button>
-                </div>
-
-                <h3>Aktualne menu</h3>
-                <ul class="menu-list" id="admin-menu-list"></ul>
             </div>
         </section>
     </main>
+    <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
