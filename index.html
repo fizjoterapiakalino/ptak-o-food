@@ -29,9 +29,9 @@
             <div class="hero-panel">
                 <div>
                     <p class="date-line" id="current-date"></p>
+                    <p class="eyebrow">Karmnik na dziś</p>
                     <h2 id="restaurant-name">Ładowanie...</h2>
                     <div class="today-order-info" id="today-order-info"></div>
-                    <p>Wpisz imię, wybierz danie i potwierdź. Bez przeklikiwania koszyka.</p>
                 </div>
                 <div class="order-count">
                     <span id="orders-count">0</span>
@@ -92,16 +92,14 @@
                             <span class="help-tip" tabindex="0" data-help="Tu widać wszystkie bieżące zamówienia oraz sumę z opcjonalnym kosztem dostawy.">?</span>
                         </div>
                     </div>
-                    <div class="action-row admin-only is-hidden">
-                        <button class="btn-success" onclick="archiveDay()">Zakończ dzień</button>
-                        <button class="btn-warning" onclick="clearAllOrders()">Reset</button>
+                    <div class="action-row">
+                        <button class="btn-warning" onclick="copyOrdersSummary()">Kopiuj listę</button>
+                        <button class="btn-success admin-only is-hidden" onclick="markAllOrdersPaid(true)">Oznacz opłacone</button>
+                        <button class="btn-warning admin-only is-hidden" onclick="markAllOrdersPaid(false)">Odznacz płatności</button>
                     </div>
                 </div>
 
-                <div class="delivery-row">
-                    <label for="delivery-fee">Koszt dostawy</label>
-                    <input type="number" id="delivery-fee" placeholder="0.00" step="0.01" oninput="renderOrders()">
-                </div>
+                <div id="orders-summary-cards" class="orders-summary-cards"></div>
 
                 <div class="table-wrap">
                     <table id="orders-table">
@@ -120,7 +118,8 @@
 
                 <div class="total-price">
                     <div id="delivery-calc-info" class="delivery-info"></div>
-                    <strong>Suma:</strong> <span id="total-price-value">0.00</span> zł
+                    <strong>Do zapłaty:</strong> <span id="remaining-price-value">0.00</span> zł
+                    <span class="total-secondary">Suma: <span id="total-price-value">0.00</span> zł</span>
                 </div>
             </div>
         </section>
@@ -168,115 +167,132 @@
                 </form>
 
                 <div id="admin-controls" class="admin-controls admin-only is-hidden">
-                    <div class="day-settings-panel">
-                        <div class="heading-title">
-                            <p class="eyebrow">Dzisiejsze zamówienie</p>
-                            <span class="help-tip" tabindex="0" data-help="Ustaw restaurację i godzinę graniczną. Zapis restauracji nie publikuje jeszcze menu.">?</span>
-                        </div>
-                        <div class="form-group">
-                            <label for="admin-restaurant-name">Skąd jemy?</label>
-                            <input type="text" id="admin-restaurant-name" placeholder="Nazwa restauracji" list="restaurant-suggestions" oninput="renderFixedMenuControls()">
-                            <datalist id="restaurant-suggestions"></datalist>
-                            <select id="restaurant-quick-select" onchange="applyRestaurantSelection(this.value)">
-                                <option value="">Wybierz z ostatnich restauracji</option>
-                            </select>
-                            <label for="admin-order-limit">Zamówienia do</label>
-                            <input type="time" id="admin-order-limit">
-                            <button class="btn-success" onclick="updateDaySettings()">Zapisz restaurację</button>
-                        </div>
-                        <div id="admin-day-summary" class="admin-day-summary"></div>
+                    <div class="admin-workflow-tabs" role="tablist" aria-label="Sekcje panelu administratora">
+                        <button class="admin-workflow-tab active" type="button" data-admin-panel="today" onclick="switchAdminPanel('today')">Dzisiaj</button>
+                        <button class="admin-workflow-tab" type="button" data-admin-panel="fixed" onclick="switchAdminPanel('fixed')">Stałe menu</button>
                     </div>
 
-                    <hr>
+                    <section id="admin-panel-today" class="admin-panel active">
+                        <div class="admin-main-layout">
+                            <section class="admin-subsection admin-left-box">
+                                <div class="heading-title">
+                                    <p class="eyebrow">Restauracja</p>
+                                    <span class="help-tip" tabindex="0" data-help="Ustaw restaurację i godzinę graniczną. Zapis restauracji nie publikuje jeszcze menu.">?</span>
+                                </div>
+                                <div class="form-group">
+                                    <label for="admin-restaurant-name">Skąd jemy?</label>
+                                    <input type="text" id="admin-restaurant-name" placeholder="Nazwa restauracji" list="restaurant-suggestions" oninput="renderFixedMenuControls()">
+                                    <datalist id="restaurant-suggestions"></datalist>
+                                    <select id="restaurant-quick-select" onchange="applyRestaurantSelection(this.value)">
+                                        <option value="">Wybierz z ostatnich restauracji</option>
+                                    </select>
+                                    <label for="admin-order-limit">Zamówienia do</label>
+                                    <input type="time" id="admin-order-limit">
+                                    <button class="btn-success" onclick="updateDaySettings()">Zapisz restaurację</button>
+                                </div>
+                                <div id="admin-day-summary" class="admin-day-summary"></div>
 
-                    <div class="menu-mode-panel">
-                        <div class="heading-title">
-                            <p class="eyebrow">Typ menu</p>
-                            <span class="help-tip" tabindex="0" data-help="Stałe menu trzeba najpierw zapisać przy restauracji. Menu dzienne można wkleić i opublikować jednorazowo.">?</span>
-                        </div>
-                        <div class="segmented-control" role="group" aria-label="Typ menu">
-                            <label>
-                                <input type="radio" name="menu-mode" value="fixed" checked onchange="setMenuMode('fixed')">
-                                <span>Stałe menu</span>
-                            </label>
-                            <label>
-                                <input type="radio" name="menu-mode" value="daily" onchange="setMenuMode('daily')">
-                                <span>Menu dzienne</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="composer-grid">
-                        <section class="composer-panel fixed-menu-panel">
-                            <div class="section-heading compact-heading">
-                                <div>
-                                    <p class="eyebrow">Stałe menu</p>
+                                <div class="menu-preview-block">
+                                    <p class="eyebrow">Menu</p>
                                     <div class="heading-title">
-                                        <h3>Wklej menu z cenami</h3>
-                                        <span class="help-tip" tabindex="0" data-help="Wpisuj po jednej pozycji w wierszu, np. Danie (opis) - 28. Opis w nawiasie pokaże się pod nazwą.">?</span>
+                                        <h3>Menu gotowe dla użytkowników</h3>
+                                        <span class="help-tip" tabindex="0" data-help="To podgląd menu, które trafi do użytkowników. Stałe menu najpierw zapisz, dopiero potem opublikuj.">?</span>
+                                    </div>
+                                    <div id="admin-menu-status" class="admin-menu-status"></div>
+                                    <div id="menu-day-preview" class="menu-day-preview"></div>
+                                </div>
+                            </section>
+
+                            <section class="admin-subsection admin-right-box">
+                                <div class="heading-title">
+                                    <p class="eyebrow">Źródło menu</p>
+                                    <span class="help-tip" tabindex="0" data-help="Wybierz zapisane menu stałe albo przygotuj jednorazowe menu dzienne.">?</span>
+                                </div>
+                                <div class="segmented-control" role="group" aria-label="Typ menu">
+                                    <label>
+                                        <input type="radio" name="menu-mode" value="fixed" checked onchange="setMenuMode('fixed')">
+                                        <span>Stałe menu</span>
+                                    </label>
+                                    <label>
+                                        <input type="radio" name="menu-mode" value="daily" onchange="setMenuMode('daily')">
+                                        <span>Menu dzienne</span>
+                                    </label>
+                                </div>
+
+                                <div class="fixed-source-panel">
+                                    <p class="note-text">Zapisane restauracje z menu stałym</p>
+                                    <div class="form-group fixed-menu-actions">
+                                        <select id="saved-fixed-menu-select" onchange="syncSavedFixedMenuSelects('saved-fixed-menu-select'); renderFixedMenuControls()">
+                                            <option value="">Wybierz zapisane menu</option>
+                                        </select>
+                                        <button class="btn-warning" id="load-fixed-menu-button" onclick="loadSelectedFixedMenu('saved-fixed-menu-select')" disabled>Wczytaj</button>
+                                    </div>
+                                    <button class="btn-warning full-width" type="button" onclick="switchAdminPanel('fixed')">Edytuj menu stałe</button>
+                                </div>
+
+                                <div class="daily-source-panel is-hidden">
+                                    <textarea id="daily-menu-input" class="daily-menu-input" placeholder="Schabowy z ziemniakami - 28&#10;Pierogi ruskie 24 zł&#10;Zupa pomidorowa: 12,50"></textarea>
+                                    <button class="btn-success full-width" onclick="parseDailyMenu()">Zatwierdź</button>
+                                    <div id="daily-menu-errors" class="daily-menu-errors is-hidden"></div>
+                                </div>
+                            </section>
+                        </div>
+
+                        <div class="admin-bottom-bar">
+                            <div class="delivery-row">
+                                <label for="delivery-fee">Koszt dostawy</label>
+                                <input type="number" id="delivery-fee" placeholder="0.00" step="0.01" oninput="renderOrders()">
+                            </div>
+                            <div class="archive-note">Autoarchiwizacja: 18:00 przy aktywnym adminie · przechowywanie: 7 dni</div>
+                            <button class="btn-warning" onclick="archiveDay()">Archiwizuj dzień</button>
+                            <button class="btn-success" id="publish-menu-button" onclick="publishComposedMenu()">Opublikuj menu</button>
+                        </div>
+                    </section>
+
+                    <section id="admin-panel-fixed" class="admin-panel">
+                        <div class="admin-panel-grid">
+                            <section class="admin-subsection">
+                                <div class="section-heading compact-heading">
+                                    <div>
+                                        <p class="eyebrow">Stałe menu</p>
+                                        <div class="heading-title">
+                                            <h3>Edytor stałego menu</h3>
+                                            <span class="help-tip" tabindex="0" data-help="Wpisuj po jednej pozycji w wierszu, np. Danie (opis) - 28. Opis w nawiasie pokaże się pod nazwą.">?</span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <textarea id="fixed-menu-input" class="daily-menu-input" placeholder="Schabowy (ziemniaki, surówka) - 28&#10;Pierogi ruskie (8 sztuk) 24 zł&#10;Zupa pomidorowa: 12,50" oninput="markFixedMenuDraftUnsaved()"></textarea>
-                            <div class="form-group">
-                                <button class="btn-success" onclick="parseFixedMenu()">Przetwórz menu</button>
-                            </div>
-                            <div id="fixed-menu-errors" class="daily-menu-errors is-hidden"></div>
+                                <div class="form-group">
+                                    <label for="fixed-menu-restaurant-name">Nazwa restauracji</label>
+                                    <input type="text" id="fixed-menu-restaurant-name" placeholder="Nazwa restauracji" list="restaurant-suggestions" oninput="markFixedMenuDraftUnsaved()">
+                                </div>
+                                <textarea id="fixed-menu-input" class="daily-menu-input" placeholder="Schabowy (ziemniaki, surówka) - 28&#10;Pierogi ruskie (8 sztuk) 24 zł&#10;Zupa pomidorowa: 12,50" oninput="markFixedMenuDraftUnsaved()"></textarea>
+                                <div class="admin-editor-actions">
+                                    <button class="btn-success" onclick="parseFixedMenu()">Zatwierdź</button>
+                                    <button class="btn-warning" id="save-fixed-menu-button" onclick="saveFixedMenu()">Zapisz stałe menu</button>
+                                </div>
+                                <div id="fixed-menu-errors" class="daily-menu-errors is-hidden"></div>
+                            </section>
 
-                            <div class="saved-fixed-menu-panel">
+                            <section class="admin-subsection">
                                 <div class="section-heading compact-heading">
                                     <div>
                                         <p class="eyebrow">Skonfigurowane menu</p>
                                         <div class="heading-title">
-                                            <h3>Menu stałe restauracji</h3>
+                                            <h3>Menu restauracji</h3>
                                             <span class="help-tip" tabindex="0" data-help="Wybierz zapisane menu po nazwie restauracji. Możesz je wczytać do edytora albo usunąć zapis.">?</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="form-group fixed-menu-actions">
-                                    <select id="saved-fixed-menu-select" onchange="renderFixedMenuControls()">
+                                    <select id="fixed-editor-menu-select" onchange="syncSavedFixedMenuSelects('fixed-editor-menu-select'); renderFixedMenuControls()">
                                         <option value="">Wybierz zapisane menu</option>
                                     </select>
-                                    <button class="btn-warning" id="load-fixed-menu-button" onclick="loadSelectedFixedMenu()" disabled>Wczytaj</button>
-                                    <button class="btn-danger" id="delete-fixed-menu-button" onclick="deleteSelectedFixedMenu()" disabled>Usuń</button>
+                                    <button class="btn-warning" type="button" onclick="loadSelectedFixedMenu('fixed-editor-menu-select')">Wczytaj wybrane menu</button>
+                                    <button class="btn-danger" id="delete-fixed-menu-button" onclick="deleteSelectedFixedMenu('fixed-editor-menu-select')" disabled>Usuń</button>
                                 </div>
-                            </div>
-                        </section>
-
-                        <section class="composer-panel daily-menu-panel is-hidden">
-                            <div class="section-heading compact-heading">
-                                <div>
-                                    <p class="eyebrow">Szybkie menu</p>
-                                    <div class="heading-title">
-                                        <h3>Wklej menu z cenami</h3>
-                                        <span class="help-tip" tabindex="0" data-help="Wklej jednorazowe menu dnia. Możesz dopisać opis w nawiasie, np. Danie (opis) - 28.">?</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <textarea id="daily-menu-input" class="daily-menu-input" placeholder="Schabowy z ziemniakami - 28&#10;Pierogi ruskie 24 zł&#10;Zupa pomidorowa: 12,50"></textarea>
-                            <div class="form-group">
-                                <input type="text" id="daily-menu-category" placeholder="Kategoria" value="Menu dnia">
-                                <button class="btn-success" onclick="parseDailyMenu()">Przetwórz menu</button>
-                            </div>
-                            <div id="daily-menu-errors" class="daily-menu-errors is-hidden"></div>
-                        </section>
-
-                        <section class="composer-panel menu-day-panel">
-                            <div class="section-heading compact-heading">
-                                <div>
-                                    <p class="eyebrow">Menu dnia</p>
-                                    <div class="heading-title">
-                                        <h3>Wybrane do zamówień</h3>
-                                        <span class="help-tip" tabindex="0" data-help="To podgląd menu, które trafi do użytkowników. Stałe menu najpierw zapisz, dopiero potem opublikuj.">?</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div id="menu-day-preview" class="menu-day-preview"></div>
-                            <button class="btn-success full-width" id="publish-menu-button" onclick="publishComposedMenu()">Opublikuj menu</button>
-                            <button class="btn-warning full-width fixed-menu-panel" id="save-fixed-menu-button" onclick="saveFixedMenu()">Zapisz</button>
-                            <button class="btn-warning full-width" onclick="clearComposedMenu()">Wyczyść wybór</button>
-                        </section>
-                    </div>
+                            </section>
+                        </div>
+                    </section>
                 </div>
             </div>
         </section>
