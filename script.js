@@ -27,6 +27,9 @@ let libraryItems = [];
 let composerSelectedIds = new Set();
 let menuMode = "fixed";
 let parsedDailyMenu = [];
+let fixedMenuDraft = [];
+let fixedMenuDraftSaved = false;
+let savedFixedMenuRestaurantId = "";
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "ptak123";
 const USER_NAME_STORAGE_KEY = "ptakUserName";
@@ -66,6 +69,15 @@ function getSelectedMenuItem() {
     const itemId = document.getElementById('item-select-id')?.value;
     if (!itemId) return null;
     return dailyMenu.find(item => String(item.id) === String(itemId)) || null;
+}
+
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 function getLibraryItemsForCurrentRestaurant() {
@@ -173,6 +185,7 @@ function menuItemFromLibraryItem(item) {
         id: item.id,
         libraryId: item.id,
         name: item.name,
+        description: item.description || "",
         price: item.price,
         category: item.category || "Inne"
     };
@@ -182,10 +195,46 @@ function menuItemFromParsedItem(item, index) {
     return {
         id: `daily-${Date.now()}-${index}`,
         name: item.name,
+        description: item.description || "",
         price: item.price,
         category: item.category || "Menu dnia",
         source: "daily"
     };
+}
+
+function menuItemFromFixedDraftItem(item, index) {
+    return {
+        id: item.id || `fixed-${Date.now()}-${index}`,
+        name: item.name,
+        description: item.description || "",
+        price: Number(item.price),
+        category: item.category || "Menu stałe",
+        source: "fixed"
+    };
+}
+
+function getAdminRestaurantName() {
+    return document.getElementById('admin-restaurant-name')?.value.trim() || restaurantName;
+}
+
+function getSavedFixedMenuRestaurants() {
+    return restaurants
+        .filter(restaurant => Array.isArray(restaurant.fixedMenu) && restaurant.fixedMenu.length > 0)
+        .sort((a, b) => a.name.localeCompare(b.name, 'pl'));
+}
+
+function getCurrentFixedMenuRestaurantId() {
+    const name = getAdminRestaurantName();
+    const existing = restaurants.find(restaurant => restaurant.name === name);
+    return existing?.id || restaurantDocId(name);
+}
+
+function isFixedMenuReadyToPublish() {
+    return menuMode !== "fixed" || (
+        fixedMenuDraft.length > 0 &&
+        fixedMenuDraftSaved &&
+        savedFixedMenuRestaurantId === getCurrentFixedMenuRestaurantId()
+    );
 }
 
 function syncComposerSelectionFromMenu() {
@@ -276,6 +325,8 @@ function initApp() {
             renderRestaurantSuggestions();
             renderMenu();
             renderAdminMenu();
+            renderSavedFixedMenuList();
+            renderFixedMenuControls();
             renderOrderLimitInfo();
             updateOrderAvailability();
             renderOrders();
@@ -310,8 +361,10 @@ function initApp() {
     db.collection("restaurants").onSnapshot((snapshot) => {
         restaurants = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderRestaurantSuggestions();
+        renderSavedFixedMenuList();
         renderMenuMode();
         renderMenuDayPreview();
+        renderFixedMenuControls();
     });
 
     db.collection("dishLibrary").onSnapshot((snapshot) => {
@@ -321,6 +374,7 @@ function initApp() {
         renderCategoryFilter();
         renderMenuDayPreview();
         renderRestaurantSuggestions();
+        renderFixedMenuControls();
     });
 }
 
@@ -340,10 +394,12 @@ function switchTab(tabId) {
         if (restaurantInput) restaurantInput.value = restaurantName;
         if (limitInput) limitInput.value = orderLimit;
         renderRestaurantSuggestions();
+        renderSavedFixedMenuList();
         renderMenuMode();
         renderCategoryFilter();
         renderAdminMenu();
         renderMenuDayPreview();
+        renderFixedMenuControls();
         updateAdminUI();
     }
 }
@@ -451,6 +507,7 @@ function applyRestaurantSelection(value) {
 
     db.collection("config").doc("current").update(update)
         .then(() => {
+            renderFixedMenuControls();
             showToast(
                 selectedRestaurant?.lastMenu?.length
                     ? "Wybrano restaurację i wczytano jej zapisane menu."
@@ -660,9 +717,77 @@ function selectCurrentMenuFromLibrary() {
 }
 
 function clearComposedMenu() {
+    if (menuMode === "daily") {
+        parsedDailyMenu = [];
+        const dailyInput = document.getElementById('daily-menu-input');
+        if (dailyInput) dailyInput.value = "";
+    } else {
+        fixedMenuDraft = [];
+        fixedMenuDraftSaved = false;
+        savedFixedMenuRestaurantId = "";
+        const fixedInput = document.getElementById('fixed-menu-input');
+        if (fixedInput) fixedInput.value = "";
+    }
+
     composerSelectedIds.clear();
     renderAdminMenu();
     renderMenuDayPreview();
+    renderFixedMenuControls();
+}
+
+function markFixedMenuDraftUnsaved() {
+    fixedMenuDraftSaved = false;
+    savedFixedMenuRestaurantId = "";
+    renderFixedMenuControls();
+}
+
+function renderSavedFixedMenuList() {
+    const select = document.getElementById('saved-fixed-menu-select');
+    if (!select) return;
+
+    const currentValue = select.value;
+    const fixedMenus = getSavedFixedMenuRestaurants();
+
+    select.innerHTML = '<option value="">Wybierz zapisane menu</option>';
+    fixedMenus.forEach(restaurant => {
+        const option = document.createElement('option');
+        option.value = restaurant.id;
+        option.innerText = restaurant.name;
+        select.appendChild(option);
+    });
+
+    select.value = fixedMenus.some(restaurant => restaurant.id === currentValue)
+        ? currentValue
+        : "";
+    renderFixedMenuControls();
+}
+
+function renderFixedMenuControls() {
+    const publishButton = document.getElementById('publish-menu-button');
+    const saveButton = document.getElementById('save-fixed-menu-button');
+    const loadButton = document.getElementById('load-fixed-menu-button');
+    const deleteButton = document.getElementById('delete-fixed-menu-button');
+    const savedSelect = document.getElementById('saved-fixed-menu-select');
+    const fixedInput = document.getElementById('fixed-menu-input');
+
+    if (publishButton) {
+        const publishDisabled = menuMode === "fixed" && !isFixedMenuReadyToPublish();
+        publishButton.disabled = publishDisabled;
+        publishButton.title = publishDisabled ? "Najpierw zapisz stałe menu." : "";
+    }
+
+    if (saveButton) {
+        const hasDraftSource = fixedMenuDraft.length > 0 || Boolean(fixedInput?.value.trim());
+        saveButton.disabled = menuMode === "fixed" && !hasDraftSource;
+    }
+
+    if (loadButton) {
+        loadButton.disabled = !savedSelect?.value;
+    }
+
+    if (deleteButton) {
+        deleteButton.disabled = !savedSelect?.value;
+    }
 }
 
 function importCurrentMenuToLibrary() {
@@ -704,6 +829,7 @@ function setMenuMode(mode) {
     menuMode = mode === "daily" ? "daily" : "fixed";
     renderMenuMode();
     renderMenuDayPreview();
+    renderFixedMenuControls();
 }
 
 function renderMenuMode() {
@@ -718,6 +844,8 @@ function renderMenuMode() {
     document.querySelectorAll('.daily-menu-panel').forEach(panel => {
         panel.classList.toggle('is-hidden', menuMode !== "daily");
     });
+
+    renderFixedMenuControls();
 }
 
 function parseDailyMenuLine(line, category) {
@@ -729,7 +857,8 @@ function parseDailyMenuLine(line, category) {
         return { error: `Nie rozpoznano ceny: ${cleanedLine}` };
     }
 
-    const name = match[1].trim();
+    const parsedName = parseMenuNameWithDescription(match[1].trim());
+    const name = parsedName.name;
     const price = Number(match[2].replace(',', '.'));
 
     if (!name || Number.isNaN(price)) {
@@ -738,8 +867,24 @@ function parseDailyMenuLine(line, category) {
 
     return {
         name,
+        description: parsedName.description,
         price,
         category
+    };
+}
+
+function parseMenuNameWithDescription(rawName) {
+    const descriptionMatch = rawName.match(/^(.*?)\s*\(([^()]*)\)\s*$/);
+    if (!descriptionMatch) {
+        return {
+            name: rawName,
+            description: ""
+        };
+    }
+
+    return {
+        name: descriptionMatch[1].trim(),
+        description: descriptionMatch[2].trim()
     };
 }
 
@@ -786,18 +931,176 @@ function parseDailyMenu() {
     }
 }
 
+function parseFixedMenu(silent = false) {
+    const input = document.getElementById('fixed-menu-input');
+    const errorsContainer = document.getElementById('fixed-menu-errors');
+    const category = "Menu stałe";
+    const lines = (input?.value || "").split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+
+    if (lines.length === 0) {
+        fixedMenuDraft = [];
+        fixedMenuDraftSaved = false;
+        savedFixedMenuRestaurantId = "";
+        if (errorsContainer) errorsContainer.classList.add('is-hidden');
+        renderMenuDayPreview();
+        renderFixedMenuControls();
+        if (!silent) showToast("Wklej przynajmniej jedną pozycję stałego menu.", "info");
+        return false;
+    }
+
+    const parsedItems = [];
+    const errors = [];
+
+    lines.forEach(line => {
+        const parsed = parseDailyMenuLine(line, category);
+        if (parsed?.error) {
+            errors.push(parsed.error);
+        } else if (parsed) {
+            parsedItems.push(parsed);
+        }
+    });
+
+    fixedMenuDraft = parsedItems;
+    fixedMenuDraftSaved = false;
+    savedFixedMenuRestaurantId = "";
+
+    if (errorsContainer) {
+        errorsContainer.innerHTML = errors.map(error => `<div>${error}</div>`).join('');
+        errorsContainer.classList.toggle('is-hidden', errors.length === 0);
+    }
+
+    renderMenuDayPreview();
+    renderFixedMenuControls();
+
+    if (!silent) {
+        if (parsedItems.length > 0) {
+            showToast(`Przetworzono ${parsedItems.length} pozycji stałego menu.`, "success");
+        } else {
+            showToast("Nie udało się rozpoznać żadnej pozycji.", "error");
+        }
+    }
+
+    return parsedItems.length > 0;
+}
+
+function saveFixedMenu() {
+    if (menuMode !== "fixed") return;
+
+    const name = getAdminRestaurantName();
+    const limitInput = document.getElementById('admin-order-limit')?.value || orderLimit;
+
+    if (!name) {
+        showToast("Podaj nazwę restauracji.", "error");
+        return;
+    }
+
+    if (!parseFixedMenu(true)) {
+        showToast("Wklej i przetwórz przynajmniej jedno danie stałego menu.", "error");
+        return;
+    }
+
+    const selectedItems = fixedMenuDraft.map(menuItemFromFixedDraftItem);
+
+    upsertRestaurant(name, {
+        menuMode: "fixed",
+        fixedMenu: selectedItems,
+        lastMenu: selectedItems,
+        lastOrderLimit: limitInput
+    })
+        .then(() => {
+            fixedMenuDraft = selectedItems;
+            fixedMenuDraftSaved = true;
+            savedFixedMenuRestaurantId = getCurrentFixedMenuRestaurantId();
+            renderSavedFixedMenuList();
+            renderMenuDayPreview();
+            renderFixedMenuControls();
+            showToast("Zapisano stałe menu restauracji. Możesz je teraz opublikować.", "success");
+        })
+        .catch(err => console.error("Error saving fixed menu:", err));
+}
+
+function loadSelectedFixedMenu() {
+    const select = document.getElementById('saved-fixed-menu-select');
+    const selectedRestaurant = restaurants.find(restaurant => restaurant.id === select?.value);
+
+    if (!selectedRestaurant?.fixedMenu?.length) {
+        showToast("Wybierz zapisane stałe menu.", "error");
+        return;
+    }
+
+    const restaurantInput = document.getElementById('admin-restaurant-name');
+    const limitInput = document.getElementById('admin-order-limit');
+    const fixedInput = document.getElementById('fixed-menu-input');
+
+    menuMode = "fixed";
+    fixedMenuDraft = selectedRestaurant.fixedMenu;
+    fixedMenuDraftSaved = true;
+    savedFixedMenuRestaurantId = selectedRestaurant.id;
+
+    if (restaurantInput) restaurantInput.value = selectedRestaurant.name;
+    if (selectedRestaurant.lastOrderLimit && limitInput) limitInput.value = selectedRestaurant.lastOrderLimit;
+    if (fixedInput) {
+        fixedInput.value = selectedRestaurant.fixedMenu
+            .map(item => `${item.name}${item.description ? ` (${item.description})` : ""} - ${Number(item.price).toFixed(2)}`)
+            .join('\n');
+    }
+
+    renderMenuMode();
+    renderMenuDayPreview();
+    renderFixedMenuControls();
+    showToast("Wczytano stałe menu do kompozytora.", "success");
+}
+
+function deleteSelectedFixedMenu() {
+    const select = document.getElementById('saved-fixed-menu-select');
+    const selectedRestaurant = restaurants.find(restaurant => restaurant.id === select?.value);
+
+    if (!selectedRestaurant?.fixedMenu?.length) {
+        showToast("Wybierz zapisane stałe menu do usunięcia.", "error");
+        return;
+    }
+
+    if (!confirm(`Usunąć zapisane stałe menu restauracji ${selectedRestaurant.name}?`)) return;
+
+    db.collection("restaurants").doc(selectedRestaurant.id).set({
+        fixedMenu: firebase.firestore.FieldValue.delete(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true })
+        .then(() => {
+            restaurants = restaurants.map(restaurant => restaurant.id === selectedRestaurant.id
+                ? { ...restaurant, fixedMenu: [] }
+                : restaurant
+            );
+
+            if (savedFixedMenuRestaurantId === selectedRestaurant.id) {
+                fixedMenuDraft = [];
+                fixedMenuDraftSaved = false;
+                savedFixedMenuRestaurantId = "";
+                const fixedInput = document.getElementById('fixed-menu-input');
+                if (fixedInput) fixedInput.value = "";
+                renderMenuDayPreview();
+            }
+
+            if (select) select.value = "";
+            renderSavedFixedMenuList();
+            renderFixedMenuControls();
+            showToast("Usunięto zapisane stałe menu.", "success");
+        })
+        .catch(err => console.error("Error deleting fixed menu:", err));
+}
+
 function renderMenuDayPreview() {
     const preview = document.getElementById('menu-day-preview');
     if (!preview) return;
 
     const selectedItems = menuMode === "daily"
         ? parsedDailyMenu
-        : getLibraryItemsForCurrentRestaurant().filter(item => composerSelectedIds.has(item.id));
+        : fixedMenuDraft;
 
     if (selectedItems.length === 0) {
         preview.innerHTML = menuMode === "daily"
             ? '<p class="note-text">Wklej menu i kliknij Przetwórz menu.</p>'
-            : '<p class="note-text">Zaznacz dania z biblioteki, żeby złożyć menu dnia.</p>';
+            : '<p class="note-text">Wklej stałe menu i kliknij Przetwórz menu.</p>';
         return;
     }
 
@@ -810,9 +1113,17 @@ function renderMenuDayPreview() {
 
     preview.innerHTML = Object.entries(groupedItems).map(([category, items]) => `
         <div class="menu-day-group">
-            <strong>${category}</strong>
+            <strong>${escapeHtml(category)}</strong>
             <ul>
-                ${items.map(item => `<li>${item.name} <span>${Number(item.price).toFixed(2)} zł</span></li>`).join('')}
+                ${items.map(item => `
+                    <li>
+                        <div class="menu-day-main">
+                            <strong>${escapeHtml(item.name)}</strong>
+                            ${item.description ? `<small class="menu-day-description">${escapeHtml(item.description)}</small>` : ""}
+                        </div>
+                        <span>${Number(item.price).toFixed(2)} zł</span>
+                    </li>
+                `).join('')}
             </ul>
         </div>
     `).join('');
@@ -821,24 +1132,40 @@ function renderMenuDayPreview() {
 function publishComposedMenu() {
     const selectedItems = menuMode === "daily"
         ? parsedDailyMenu.map(menuItemFromParsedItem)
-        : getLibraryItemsForCurrentRestaurant()
-            .filter(item => composerSelectedIds.has(item.id))
-            .map(menuItemFromLibraryItem);
+        : fixedMenuDraft.map(menuItemFromFixedDraftItem);
 
     if (selectedItems.length === 0) {
-        showToast(menuMode === "daily" ? "Przetwórz przynajmniej jedno danie." : "Zaznacz przynajmniej jedno danie.", "error");
+        showToast(menuMode === "daily" ? "Przetwórz przynajmniej jedno danie." : "Wklej i zapisz przynajmniej jedno danie stałego menu.", "error");
         return;
     }
 
+    if (menuMode === "fixed" && !isFixedMenuReadyToPublish()) {
+        showToast("Najpierw zapisz stałe menu, potem je opublikuj.", "error");
+        return;
+    }
+
+    const publishedRestaurantName = menuMode === "fixed" ? getAdminRestaurantName() : restaurantName;
+    const publishedOrderLimit = menuMode === "fixed"
+        ? (document.getElementById('admin-order-limit')?.value || orderLimit)
+        : orderLimit;
+    const configUpdates = menuMode === "fixed"
+        ? { restaurantName: publishedRestaurantName, menu: selectedItems, orderLimit: publishedOrderLimit }
+        : { menu: selectedItems };
+    const restaurantUpdates = {
+        menuMode,
+        lastMenu: selectedItems,
+        lastOrderLimit: publishedOrderLimit
+    };
+
+    if (menuMode === "fixed") {
+        restaurantUpdates.fixedMenu = selectedItems;
+    }
+
     Promise.all([
-        db.collection("config").doc("current").update({ menu: selectedItems }),
-        upsertRestaurant(restaurantName, {
-            menuMode,
-            lastMenu: selectedItems,
-            lastOrderLimit: orderLimit
-        })
+        db.collection("config").doc("current").update(configUpdates),
+        upsertRestaurant(publishedRestaurantName, restaurantUpdates)
     ])
-        .then(() => showToast("Opublikowano menu dnia i zapisano je przy restauracji.", "success"))
+        .then(() => showToast("Opublikowano menu i zapisano je przy restauracji.", "success"))
         .catch(err => console.error("Error publishing menu:", err));
 }
 
@@ -864,7 +1191,22 @@ function renderMenu() {
         }
 
         const name = document.createElement('span');
-        name.innerHTML = `${item.name}${item.category ? `<small>${item.category}</small>` : ""}`;
+        const itemName = document.createElement('strong');
+        itemName.innerText = item.name;
+        name.appendChild(itemName);
+
+        if (item.description) {
+            const description = document.createElement('small');
+            description.className = 'menu-item-description';
+            description.innerText = item.description;
+            name.appendChild(description);
+        }
+
+        if (item.category) {
+            const category = document.createElement('small');
+            category.innerText = item.category;
+            name.appendChild(category);
+        }
 
         const price = document.createElement('span');
         price.className = 'menu-price';
