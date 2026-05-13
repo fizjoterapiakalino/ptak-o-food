@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ptakovo | szybkie zamawianie</title>
+    <meta name="theme-color" content="#ffd31a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Ptakovo">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="logo.png">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -245,8 +250,10 @@
                             </div>
                             <div class="archive-note">Autoarchiwizacja: 18:00 przy aktywnym adminie · przechowywanie: 7 dni</div>
                             <button class="btn-warning" onclick="archiveDay()">Archiwizuj dzień</button>
+                            <button class="btn-warning" id="show-messenger-message-button" type="button" onclick="openMessengerShareModal()" disabled>Pokaż wiadomość</button>
                             <button class="btn-success" id="publish-menu-button" onclick="publishComposedMenu()">Opublikuj menu</button>
                         </div>
+
                     </section>
 
                     <section id="admin-panel-fixed" class="admin-panel">
@@ -297,6 +304,27 @@
             </div>
         </section>
     </main>
+
+    <div class="modal-overlay is-hidden" id="messenger-share-modal" role="dialog" aria-modal="true" aria-labelledby="messenger-share-title">
+        <div class="modal-panel messenger-share-box">
+            <div class="section-heading compact-heading">
+                <div>
+                    <p class="eyebrow">Messenger</p>
+                    <div class="heading-title">
+                        <h3 id="messenger-share-title">Gotowa wiadomość do grupy</h3>
+                        <span class="help-tip" tabindex="0" data-help="Po publikacji menu skopiuj tekst i wklej go do grupy Messenger.">?</span>
+                    </div>
+                </div>
+                <button class="btn-danger btn-small" type="button" onclick="closeMessengerShareModal()" aria-label="Zamknij">Zamknij</button>
+            </div>
+            <textarea id="messenger-message-output" class="messenger-message-output" readonly></textarea>
+            <div class="modal-actions">
+                <button class="btn-warning" type="button" onclick="copyMessengerMenuMessage()">Kopiuj wiadomość</button>
+                <button class="btn-success" type="button" onclick="copyMessengerMenuMessage(); closeMessengerShareModal();">Skopiuj i zamknij</button>
+            </div>
+        </div>
+    </div>
+
     <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>

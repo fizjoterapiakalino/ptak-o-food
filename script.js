@@ -31,6 +31,7 @@ let parsedDailyMenu = [];
 let fixedMenuDraft = [];
 let fixedMenuDraftSaved = false;
 let savedFixedMenuRestaurantId = "";
+let lastMessengerMenuMessage = "";
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "ptak123";
 const USER_NAME_STORAGE_KEY = "ptakUserName";
@@ -334,6 +335,7 @@ function initApp() {
             restaurantName = data.restaurantName || "Bistro pod Pijanym Ptakiem";
             dailyMenu = data.menu || [];
             orderLimit = data.orderLimit || "";
+            lastMessengerMenuMessage = data.messengerMessage || "";
             syncComposerSelectionFromMenu();
 
             renderRestaurantName();
@@ -343,6 +345,7 @@ function initApp() {
             renderAdminMenu();
             renderSavedFixedMenuList();
             renderFixedMenuControls();
+            renderMessengerShareMessage();
             renderOrderLimitInfo();
             updateOrderAvailability();
             renderOrders();
@@ -1242,6 +1245,101 @@ function renderMenuDayPreview() {
     renderAdminMenuStatus();
 }
 
+function buildMessengerMenuMessage(publishedRestaurantName, publishedOrderLimit, items) {
+    const orderingUrl = getOrderingUrl();
+    const lines = [
+        `Nowe menu - ${publishedRestaurantName || "dzisiaj"}`
+    ];
+
+    if (publishedOrderLimit) {
+        lines.push(`Zamówienia do: ${publishedOrderLimit}`);
+    }
+
+    lines.push("");
+    items.forEach((item, index) => {
+        const description = item.description ? ` (${item.description})` : "";
+        const price = Number(item.price) || 0;
+        lines.push(`${index + 1}. ${item.name}${description} - ${price.toFixed(2)} zł`);
+    });
+    lines.push("");
+    lines.push("Zamówienia składamy w Ptakovo.");
+    if (orderingUrl) {
+        lines.push(`Zamów tutaj: ${orderingUrl}`);
+    }
+
+    return lines.join('\n');
+}
+
+function getOrderingUrl() {
+    return "https://ptakovo.vercel.app/";
+}
+
+function renderMessengerShareMessage() {
+    const output = document.getElementById('messenger-message-output');
+    const showButton = document.getElementById('show-messenger-message-button');
+    if (!output) return;
+
+    output.value = lastMessengerMenuMessage;
+    if (showButton) showButton.disabled = !lastMessengerMenuMessage;
+}
+
+function openMessengerShareModal() {
+    renderMessengerShareMessage();
+
+    const modal = document.getElementById('messenger-share-modal');
+    const output = document.getElementById('messenger-message-output');
+    if (!modal || !lastMessengerMenuMessage) return;
+
+    modal.classList.remove('is-hidden');
+    output?.focus();
+    output?.select();
+}
+
+function closeMessengerShareModal() {
+    const modal = document.getElementById('messenger-share-modal');
+    if (!modal) return;
+
+    modal.classList.add('is-hidden');
+}
+
+function initMessengerShareModal() {
+    const modal = document.getElementById('messenger-share-modal');
+    if (!modal) return;
+
+    modal.addEventListener('click', event => {
+        if (event.target === modal) closeMessengerShareModal();
+    });
+
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closeMessengerShareModal();
+    });
+}
+
+function copyMessengerMenuMessage() {
+    const output = document.getElementById('messenger-message-output');
+    const message = output?.value || lastMessengerMenuMessage;
+
+    if (!message) {
+        showToast("Nie ma wiadomości do skopiowania.", "info");
+        return;
+    }
+
+    if (!navigator.clipboard) {
+        output?.focus();
+        output?.select();
+        const copied = document.execCommand && document.execCommand('copy');
+        showToast(copied ? "Skopiowano wiadomość do Messengera." : "Kopiowanie nie jest dostępne w tej przeglądarce.", copied ? "success" : "error");
+        return;
+    }
+
+    navigator.clipboard.writeText(message)
+        .then(() => showToast("Skopiowano wiadomość do Messengera.", "success"))
+        .catch(err => {
+            console.error("Error copying Messenger message:", err);
+            showToast("Nie udało się skopiować wiadomości.", "error");
+        });
+}
+
 function publishComposedMenu() {
     const selectedItems = menuMode === "daily"
         ? parsedDailyMenu.map(menuItemFromParsedItem)
@@ -1261,9 +1359,20 @@ function publishComposedMenu() {
     const publishedOrderLimit = menuMode === "fixed"
         ? (document.getElementById('admin-order-limit')?.value || orderLimit)
         : orderLimit;
+    const messengerMessage = buildMessengerMenuMessage(publishedRestaurantName, publishedOrderLimit, selectedItems);
     const configUpdates = menuMode === "fixed"
-        ? { restaurantName: publishedRestaurantName, menu: selectedItems, orderLimit: publishedOrderLimit }
-        : { menu: selectedItems };
+        ? {
+            restaurantName: publishedRestaurantName,
+            menu: selectedItems,
+            orderLimit: publishedOrderLimit,
+            messengerMessage,
+            messengerMessageUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }
+        : {
+            menu: selectedItems,
+            messengerMessage,
+            messengerMessageUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
     const restaurantUpdates = {
         menuMode,
         lastMenu: selectedItems,
@@ -1278,7 +1387,11 @@ function publishComposedMenu() {
         db.collection("config").doc("current").update(configUpdates),
         upsertRestaurant(publishedRestaurantName, restaurantUpdates)
     ])
-        .then(() => showToast("Opublikowano menu i zapisano je przy restauracji.", "success"))
+        .then(() => {
+            lastMessengerMenuMessage = messengerMessage;
+            openMessengerShareModal();
+            showToast("Opublikowano menu. Gotowa wiadomość do Messengera jest gotowa.", "success");
+        })
         .catch(err => console.error("Error publishing menu:", err));
 }
 
@@ -1829,8 +1942,19 @@ function reorder(user, itemId, note) {
     }
 }
 
+function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js')
+            .catch(err => console.error("Service worker registration failed:", err));
+    });
+}
+
 initRememberedUserName();
 initAdminPanelPreference();
+initMessengerShareModal();
+registerServiceWorker();
 initApp();
 updateAdminUI();
 
